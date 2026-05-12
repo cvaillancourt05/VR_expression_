@@ -14,7 +14,7 @@ Filtrage des sondes
 
 #### a) Construction du modèle linéaire mixte par sonde
 
-    log2_expression ~ age + sexe + PC1..PC10 housekeeping + (lead cis-eQTN) + (1/ matrice kinship)
+    log2_expression ~ age + sexe + PC1..PC10 housekeeping - (lead cis-eQTN) + (1/ matrice kinship)
 
  - PC1 à PC10 (housekeeping): capture la variation technique
  - Matrice kinship : correction pour la stucture familiale des données
@@ -26,7 +26,7 @@ Filtrage des sondes
    
 	Selon GTEx:
         cis-eQTL : SNP situé dans une fenêtre de ±1 Mb autour du site d’initiation de la transcription (TSS) du gène
-	lead cis-eQTL :  présente la plus petite p‑value d’association avec l’expression du gène
+	      lead cis-eQTL :  présente la plus petite p‑value d’association avec l’expression du gène
 
 
 #### b) Extraction des résidus
@@ -125,6 +125,7 @@ Si un variant est porté par plusieurs individus outliers:
   - Direction de l'expression aberrante
 
   - MAF
+
 
 ## 3. Calcul du burden de variants rares (IOGC)
 

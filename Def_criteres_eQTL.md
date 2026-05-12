@@ -42,3 +42,5 @@ Variant avec la p-value d'association la plus faible dans la fenêtre
 
       expression_résiduelle ~ génotype (0/1/2) + phénotype (0/1/2) + covariables
 
+Outil : tensorQTL (version plus récente de fastQTL)
+
