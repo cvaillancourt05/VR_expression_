@@ -6,27 +6,27 @@ cis-eQTL significatif : p‑value après correction pour tests multiples (par pe
 
 lead cis-eQTL :  présente la plus petite p‑value d’association avec l’expression du gène
 
-## Méthode GTEx pour identifier les cis-eQTL
+# Méthode GTEx pour identifier les cis-eQTL
 
 GTEx utilise un outil pour faire le mapping des cis-eQTL --> FastQTL
 
-#### a) Fenêtre cis : +/- 1Mb autour du site de début de transcription (TSS)
+### Fenêtre cis : +/- 1Mb autour du site de début de transcription (TSS)
 
-#### b) Test d'association - régression linéaire
+### Test d'association - régression linéaire
 
 Pour chaque paire gène-variant :
 
-		expression résiduelle/ajustée \~ génotype + covariables
+		expression_résiduelle ~ génotype (0/1/2) + phénotype (SZ/BD/CL) + covariables
 
 
-
-#### c) correction pour tests multiples
+### Correction pour tests multiples
 
 Correction intra-gène (avec FastQTL)
 
 * Permutations de l'expression (environ une centaine)
 * Récupération de la meilleure p-value par permutation
 * Modélisation de la distribution par une loi beta pour obtenir des p-value ajustées
+
 --Potentiellement computationnellement lourd
 
 Correction genome-wide --correction FDR
@@ -36,11 +36,4 @@ Correction genome-wide --correction FDR
 #### d) Lead cis-eQTL par gène
 
 Variant avec la p-value d'association la plus faible dans la fenêtre
-
-
-## Régression linéaire pour identification des lead cis-eQTN
-
-      expression_résiduelle ~ génotype (0/1/2) + phénotype (0/1/2) + covariables
-
-Outil : tensorQTL (version plus récente de fastQTL)
 
