@@ -40,11 +40,11 @@ Pour définir l'expression "normale" selon les individus non-atteints:
 
     Z(i,j) = ( résidu(i,j)- moy_nar(i) ) / SD_nar(i)
 
-Pour définir l'expression "normale" selon les individus atteints :
+Pour définir l'expression "normale" selon les individus atteints (seulement applicable chez les atteints) :
 
     Z(i,j) = ( résidu(i,j)- moy_cas(i) ) / SD_cas(i)
 
-→ Comparaison des deux approches pour évaluer si le groupe de référence influence le nombre de outliers identifiés
+→ Comparaison des deux approches pour évaluer si le groupe de référence influence le nombre de outliers identifiés chez les atteints
 
 
 ### 1.2 Identification des outliers globaux
@@ -62,12 +62,14 @@ Seuil d'expression aberrante : |Z|>= 2
 ### 2.1 Vérification de l'assemblage génomique
 
 Effectuer un liftover de hg19 à hg38 (fait dans Ferraro)
+  - Pour les sondes d'expression
 
 ### 2.2 Définir les régions autour des gènes
 
 #### a) Obtenir les coordonnées des sondes
 
 Pour chaque sonde, définir les bornes du gène correspondant au gène
+
 Avec biomaRt à partir des noms des gènes
 
 #### b) Définir la fenêtre
@@ -82,7 +84,8 @@ Fenêtre 2 (Chagnon) : +/- 50kb autour du gène (capture plus de variants, augme
 #### c) Création du fichier BED des régions cis
 
 - Générer un fichier BED avec une ligne par gène (coordonnées en hg38)
-		chr | start_gene - fenetre | end_gene + fenetre | ID
+		
+    chr | start_gene - fenetre | end_gene + fenetre | ID
 
 - Intersecter avec les variants rares pour obtenir une liste des variants candidats (extrait identité des variants + gène associé)
 
