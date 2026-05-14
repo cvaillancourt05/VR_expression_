@@ -74,5 +74,9 @@ lifted <- data.frame(
   stringsAsFactors = FALSE
 )
 
+# Déduplication par probe_id
+lifted <- lifted[order(lifted$probe_id, lifted$start_hg38), ]
+lifted <- lifted[!duplicated(lifted$probe_id), ]
+
 # Sauvegarde
 #write.csv(lifted, "data/Illumina HumanHT-12 V4.0 expression beadchip/resultat/HumanHT12v4_hg38_annotations.csv", row.names = FALSE)

@@ -1,10 +1,12 @@
+# Préparation des fichiers nécessaires pour TensorQTL
+
 library(data.table)
 library(readxl)
 source("liftOver.R")
 
-# =====================
-# Matrice d'expression
-# =====================
+# =============================
+# Matrice d'expression en hg38 
+# =============================
 
 # Fusion avec l'expression
 expr_data <- read.delim("data/Adjusted_expression_values.txt", sep = "\t", check.names = FALSE)
@@ -24,9 +26,9 @@ tensorqtl_bed <- tensorqtl_bed[order(tensorqtl_bed$`#Chr`, tensorqtl_bed$start),
 write.table(tensorqtl_bed, "data/liftover_resultat/expression_hg38.bed", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 
-# ====================
-# Covariables
-# ====================
+# ============
+# Covariables 
+# ============
 
 # Chargement des données du phénotype mis à jour
 pheno <- read.table("data/GCbroad_plink.txt", header = FALSE, stringsAsFactors = FALSE)
@@ -40,9 +42,10 @@ pheno <- pheno[pheno$Diagnostic != 0, ]
 pheno$statut_Maladie <- ifelse(pheno$Diagnostic == 2, 1, 0)
 
 # Chargement des covariables
-df_covars <- read.excel("data/attributs_sujets.xlsx", sheet = 1)
-df_covars$subId <- as.character(df_covars$subId)
-rownames(df_covars) <- df_covars$subId
+df_covars <- read_excel("data/attributs_sujets.xlsx", sheet = 1)
+df_covars <- as.data.frame(df_covars)
+df_covars$subid <- as.character(df_covars$subid)
+rownames(df_covars) <- df_covars$subid
 
 df_covars$Sexe_num <- ifelse(df_covars$sexe == "M", 1, 0)
 df_covars$Batch_num <- as.numeric(as.factor(df_covars$batch))
@@ -51,38 +54,42 @@ df_covars$Batch_num <- as.numeric(as.factor(df_covars$batch))
 cols_individu_expr <- setdiff(colnames(expr_hg38), c("probe_id", "illumina_id", "symbol", "chr_hg38", "start_hg38", "end_hg38"))
 
 # L'individu doit exister dans tous les fichiers
-individu_existants <- intersect(cols_individu_expr, intersect(pheno$IID, df_covars$subId))
+ind_existants <- intersect(cols_individu_expr, intersect(pheno$IID, df_covars$subid))
 
 # Formatage de la matrice d'expression BED
-tensorqtl_bed <- expr_hg38[, c("chr_hg38", "start_hg38", "end_hg38", "probe_id", individus_existants)]
+tensorqtl_bed <- expr_hg38[, c("chr_hg38", "start_hg38", "end_hg38", "probe_id", ind_existants)]
 colnames(tensorqtl_bed)[1:4] <- c("#Chr", "start", "end", "ID")
 tensorqtl_bed$`#Chr` <- gsub("chr", "", tensorqtl_bed$`#Chr`)
 tensorqtl_bed <- tensorqtl_bed[order(tensorqtl_bed$`#Chr`, tensorqtl_bed$start), ]
 
 # Construction de la matrice des covariables
-pheno_aligne <- pheno[individu_existants, ]
-covars_aligne <- df_covars[individu_existants, ]
+pheno_aligne <- pheno[ind_existants, ]
+covars_aligne <- df_covars[ind_existants, ]
 
 df_covariables <- data.frame(
-  Statut_Maladie = pheno_aligne$Statut_Maladie,
+  Statut_Maladie = pheno_aligne$statut_Maladie,
   Age = covars_aligne$age.ponc, 
   Sexe = covars_aligne$Sexe_num,
   Batch = covars_aligne$Batch_num,
-  PC1 = excel_aligne$PC1,
-  PC2 = excel_aligne$PC2,
-  PC3 = excel_aligne$PC3,
-  PC4 = excel_aligne$PC4,
-  PC5 = excel_aligne$PC5,
-  PC6 = excel_aligne$PC6,
-  PC7 = excel_aligne$PC7,
-  PC8 = excel_aligne$PC8,
-  PC9 = excel_aligne$PC9,
-  PC10 = excel_aligne$PC10,
-  row.names = individu_existants
+  PC1 = covars_aligne$PC1,
+  PC2 = covars_aligne$PC2,
+  PC3 = covars_aligne$PC3,
+  PC4 = covars_aligne$PC4,
+  PC5 = covars_aligne$PC5,
+  PC6 = covars_aligne$PC6,
+  PC7 = covars_aligne$PC7,
+  PC8 = covars_aligne$PC8,
+  PC9 = covars_aligne$PC9,
+  PC10 = covars_aligne$PC10,
+  row.names = ind_existants
 )
 
 # Transposition pour TensorQTL
 covariates_tensorqtl <- t(df_covariables)
 
 # Sauvegarde
-write.table(tensorqtl_bed, "data/liftover_resultat/covariates.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+rownames(covariates_tensorqtl) <- c("Phenotype", "Age", "Sexe", "Batch", "PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10")
+
+# Sauvegarde forcée avec l'identifiant de colonne initial 'id' (Requis par TensorQTL)
+write.table(data.frame(id = rownames(covariates_tensorqtl), covariates_tensorqtl, check.names = FALSE), "data/liftover_resultat/covariates.txt", sep = "\t", 
+                        row.names = FALSE, col.names = TRUE, quote = FALSE)
