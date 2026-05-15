@@ -27,7 +27,7 @@ write.table(tensorqtl_bed, "results/eQTL/expression_hg38.bed", sep = "\t", row.n
 
 
 # ============
-# Covariables 
+# Phénotypes 
 # ============
 
 # Chargement des données du phénotype mis à jour
@@ -41,20 +41,11 @@ pheno <- pheno[pheno$Diagnostic != 0, ]
 # Recodage binaire : Atteint (1), Non-atteint (0)
 pheno$statut_Maladie <- ifelse(pheno$Diagnostic == 2, 1, 0)
 
-# Chargement des covariables
-df_covars <- read_excel("data/attributs_sujets.xlsx", sheet = 1)
-df_covars <- as.data.frame(df_covars)
-df_covars$subid <- as.character(df_covars$subid)
-rownames(df_covars) <- df_covars$subid
-
-df_covars$Sexe_num <- ifelse(df_covars$sexe == "M", 1, 0)
-df_covars$Batch_num <- as.numeric(as.factor(df_covars$batch))
-
 # Intersection
 cols_individu_expr <- setdiff(colnames(expr_hg38), c("probe_id", "illumina_id", "symbol", "chr_hg38", "start_hg38", "end_hg38"))
 
 # L'individu doit exister dans tous les fichiers
-ind_existants <- intersect(cols_individu_expr, intersect(pheno$IID, df_covars$subid))
+ind_existants <- intersect(cols_individu_expr, pheno$IID)
 
 # Formatage de la matrice d'expression BED
 tensorqtl_bed <- expr_hg38[, c("chr_hg38", "start_hg38", "end_hg38", "probe_id", ind_existants)]
@@ -64,19 +55,18 @@ tensorqtl_bed <- tensorqtl_bed[order(tensorqtl_bed$`#Chr`, tensorqtl_bed$start),
 
 # Construction de la matrice des covariables
 pheno_aligne <- pheno[ind_existants, ]
-covars_aligne <- df_covars[ind_existants, ]
 
-df_covariables <- data.frame(
+df_pheno <- data.frame(
   Statut_Maladie = pheno_aligne$statut_Maladie,
   row.names = ind_existants
 )
 
 # Transposition pour TensorQTL
-covariates_tensorqtl <- t(df_covariables)
+pheno_tensorqtl <- t(df_covariables)
 
 # Sauvegarde
-rownames(covariates_tensorqtl) <- c("Phenotype")
+rownames(pheno_tensorqtl) <- "Phenotype"
 
 # Sauvegarde forcée avec l'identifiant de colonne initial 'id' (Requis par TensorQTL)
-write.table(data.frame(id = rownames(covariates_tensorqtl), covariates_tensorqtl, check.names = FALSE), "results/eQTL/covariates.txt", sep = "\t", 
+write.table(data.frame(id = rownames(pheno_tensorqtl), pheno_tensorqtl, check.names = FALSE), "results/eQTL/phenotypes.txt", sep = "\t", 
                         row.names = FALSE, col.names = TRUE, quote = FALSE)
