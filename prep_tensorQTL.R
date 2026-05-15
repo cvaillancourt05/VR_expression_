@@ -23,7 +23,7 @@ tensorqtl_bed$`#Chr` <- gsub("chr", "", tensorqtl_bed$`#Chr`)
 tensorqtl_bed <- tensorqtl_bed[order(tensorqtl_bed$`#Chr`, tensorqtl_bed$start), ]
 
 # Sauvegarde
-write.table(tensorqtl_bed, "data/liftover_resultat/expression_hg38.bed", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+write.table(tensorqtl_bed, "results/eQTL/expression_hg38.bed", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 
 # ============
@@ -68,19 +68,6 @@ covars_aligne <- df_covars[ind_existants, ]
 
 df_covariables <- data.frame(
   Statut_Maladie = pheno_aligne$statut_Maladie,
-  Age = covars_aligne$age.ponc, 
-  Sexe = covars_aligne$Sexe_num,
-  Batch = covars_aligne$Batch_num,
-  PC1 = covars_aligne$PC1,
-  PC2 = covars_aligne$PC2,
-  PC3 = covars_aligne$PC3,
-  PC4 = covars_aligne$PC4,
-  PC5 = covars_aligne$PC5,
-  PC6 = covars_aligne$PC6,
-  PC7 = covars_aligne$PC7,
-  PC8 = covars_aligne$PC8,
-  PC9 = covars_aligne$PC9,
-  PC10 = covars_aligne$PC10,
   row.names = ind_existants
 )
 
@@ -88,8 +75,8 @@ df_covariables <- data.frame(
 covariates_tensorqtl <- t(df_covariables)
 
 # Sauvegarde
-rownames(covariates_tensorqtl) <- c("Phenotype", "Age", "Sexe", "Batch", "PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10")
+rownames(covariates_tensorqtl) <- c("Phenotype")
 
 # Sauvegarde forcée avec l'identifiant de colonne initial 'id' (Requis par TensorQTL)
-write.table(data.frame(id = rownames(covariates_tensorqtl), covariates_tensorqtl, check.names = FALSE), "data/liftover_resultat/covariates.txt", sep = "\t", 
+write.table(data.frame(id = rownames(covariates_tensorqtl), covariates_tensorqtl, check.names = FALSE), "results/eQTL/covariates.txt", sep = "\t", 
                         row.names = FALSE, col.names = TRUE, quote = FALSE)
