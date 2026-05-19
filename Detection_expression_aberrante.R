@@ -12,9 +12,14 @@ pheno$IID <- as.character(pheno$IID)
 pheno <- pheno[pheno$Diagnostic != 0, ]
 pheno$Status <- ifelse(pheno$Diagnostic == 2, 1, 0)
 
-# Données ajustées SANS retrait du lead cis-eQTL
+# Filtrage des sondes pour obtenir seulement les sondes exprimées
+sondes_exprimees <- fread("data/liste_sondes_expr_GC.txt", header = FALSE, col.names ="probe_id")$probe_id
+
+# Données ajustées sans retrait du lead cis-eQTL (AVEC)
 expr_avec_eqtl <- fread("data/Adjusted_expression_values.txt", data.table = FALSE)
 colnames(expr_avec_eqtl)[1] <- "probe_id"
+
+expr_avec_eqtl <-expr_avec_eqtl[expr_avec_eqtl$probe_id %in% sondes_exprimees, ]
 
 ids_avec_eqtl <- intersect(colnames(expr_avec_eqtl), pheno$IID)
 ids_non_atteints_avec <- pheno$IID[pheno$Status == 0 & pheno$IID %in% ids_avec_eqtl]
@@ -23,10 +28,11 @@ ids_atteints_avec     <- pheno$IID[pheno$Status == 1 & pheno$IID %in% ids_avec_e
 mat_expr_avec <- as.matrix(expr_avec_eqtl[, ids_avec_eqtl])
 rownames(mat_expr_avec) <- expr_avec_eqtl$probe_id
 
-# Données ajustées AVEC retrait du lead cis-eQTL
-expr_sans_eqtl <- fread("results/eQTL/test/Adjusted_expression_values_without_eqtl.txt", data.table = FALSE)
-#expr_sans_eqtl <- expr_avec_eqtl #à supprimer plus tard
+# Données ajustées avec retrait du lead cis-eQTL (SANS)
+expr_sans_eqtl <- fread("results/eQTL/Adjusted_expression_values_without_eqtl.txt", data.table = FALSE)
 colnames(expr_sans_eqtl)[1:4] <- c("Chr", "start", "end", "probe_id")
+
+expr_sans_eqtl <- expr_sans_eqtl[expr_sans_eqtl$probe_id %in% sondes_exprimees, ]
 
 ids_sans_eqtl <- intersect(colnames(expr_sans_eqtl), pheno$IID)
 ids_non_atteints_sans <- pheno$IID[pheno$Status == 0 & pheno$IID %in% ids_sans_eqtl]
@@ -75,21 +81,17 @@ z_initial_sans_ref_a <- calculer_scores_z(mat_expr_sans, ids_reference = ids_att
 # ================================================
 # Nettoyage - identification des outliers globaux
 # ================================================
-#outliers_par_individu <- colSums(abs(z_initial_avec_ref_na) >= 2, na.rm = TRUE)
-#ids_gardes <- names(outliers_par_individu[outliers_par_individu <= 100]) #Rejette tous les individus
 
 # Avec eQTL
 outliers_par_ind_avec <- colSums(abs(z_initial_avec_ref_na) >= 2, na.rm = TRUE)
-seuil_outlier <- mean(outliers_par_ind_avec) + 3 * sd(outliers_par_ind_avec) #Considéré comme un outlier global si son nombre de sondes aberrantes est anormalement élevé par rapport au reste du groupe
-ids_gardes_avec <- names(outliers_par_ind_avec[outliers_par_ind_avec <= seuil_outlier])
+ids_gardes_avec <- names(outliers_par_ind_avec[outliers_par_ind_avec <= 100])
 
 ids_atteints_avec_clean <- intersect(ids_atteints_avec, ids_gardes_avec)
 ids_non_atteints_avec_clean <- intersect(ids_non_atteints_avec, ids_gardes_avec)
 
 # Sans eQTL
 outliers_par_ind_sans <- colSums(abs(z_initial_sans_ref_na) >= 2, na.rm = TRUE)
-seuil_outlier <- mean(outliers_par_ind_avec) + 3 * sd(outliers_par_ind_avec) #Considéré comme un outlier global si son nombre de sondes aberrantes est anormalement élevé par rapport au reste du groupe
-ids_gardes_sans <- names(outliers_par_ind_sans[outliers_par_ind_sans <= seuil_outlier])
+ids_gardes_sans <- names(outliers_par_ind_sans[outliers_par_ind_sans <= 100])
 
 ids_atteints_sans_clean <- intersect(ids_atteints_sans, ids_gardes_sans)
 ids_non_atteints_sans_clean <- intersect(ids_non_atteints_sans, ids_gardes_sans)
