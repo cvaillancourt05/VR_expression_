@@ -77,4 +77,4 @@ write.table(tensorqtl_bed, "results/eQTL/expression_hg38.bed", sep = "\t", row.n
 
 # Sauvegarde en .bed.gz 
 tensorqtl_bed_zip <- bgzip("results/eQTL/expression_hg38.bed", dest= "results/eQTL/expression_hg38.bed.gz", overwrite = TRUE)
-indexTabix(tensorqtl_bed_zip, format = "bed")
+#indexTabix(tensorqtl_bed_zip, format = "bed")
