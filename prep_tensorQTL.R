@@ -2,6 +2,7 @@
 
 library(data.table)
 library(readxl)
+library(Rsamtools)
 source("liftOver.R")
 
 # =============================
@@ -21,10 +22,6 @@ tensorqtl_bed <- expr_hg38[, c("chr_hg38", "start_hg38", "end_hg38", "probe_id",
 colnames(tensorqtl_bed)[1:4] <- c("#Chr", "start", "end", "ID")
 tensorqtl_bed$`#Chr` <- gsub("chr", "", tensorqtl_bed$`#Chr`)
 tensorqtl_bed <- tensorqtl_bed[order(tensorqtl_bed$`#Chr`, tensorqtl_bed$start), ]
-
-# Sauvegarde
-write.table(tensorqtl_bed, "results/eQTL/expression_hg38.bed", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
-
 
 # ============
 # Phénotypes 
@@ -70,3 +67,14 @@ rownames(pheno_tensorqtl) <- "Phenotype"
 # Sauvegarde forcée avec l'identifiant de colonne initial 'id' (Requis par TensorQTL)
 write.table(data.frame(id = rownames(pheno_tensorqtl), pheno_tensorqtl, check.names = FALSE), "results/eQTL/phenotypes.txt", sep = "\t", 
                         row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+
+# ==================================
+# Matrice d'expression - sauvegarde
+# ==================================
+# Sauvegarde
+write.table(tensorqtl_bed, "results/eQTL/expression_hg38.bed", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# Sauvegarde en .bed.gz 
+tensorqtl_bed_zip <- bgzip("results/eQTL/expression_hg38.bed", dest= "results/eQTL/expression_hg38.bed.gz", overwrite = TRUE)
+indexTabix(tensorqtl_bed_zip, format = "bed")
