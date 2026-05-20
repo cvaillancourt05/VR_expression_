@@ -71,6 +71,7 @@ z_initial_avec_ref_na <- calculer_scores_z(mat_expr_avec, ids_reference = ids_no
 # 2- Centré/Réduit sur les atteints initiaux, appliqué aux atteints uniquement
 z_initial_avec_ref_a <- calculer_scores_z(mat_expr_avec, ids_reference = ids_atteints_avec, ids_cible = ids_atteints_avec)
 
+
 # SANS EQTL
 # 1- Centré/Réduit sur les non-atteints initiaux, appliqué à TOUS les individus
 z_initial_sans_ref_na <- calculer_scores_z(mat_expr_sans, ids_reference = ids_non_atteints_sans, ids_cible = ids_sans_eqtl)
