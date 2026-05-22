@@ -12,22 +12,40 @@ annotation <- annotation[as.character(annotation$Chromosome) %in% c(as.character
 
 # Parsing des coordonnées 
 parse_probe <- function(chr, coord_string, probe_id, illumina_id, symbol) {
-
-    pieces <- unlist(strsplit(coord_string, ":"))
+    if (is.na(coord_string) || coord_string == "" || coord_string == "0") {
+        return(data.frame())
+    }
+    
+    pieces <- unlist(strsplit(coord_string, ";"))
+    
     ranges <- lapply(pieces, function(x) {
 
+        if (grepl(":", x)) {
+            x <- unlist(strsplit(x, ":"))[2]
+        }
+        
         pos <- unlist(strsplit(x, "-"))
+        start_val <- as.numeric(pos[1])
+        end_val <- as.numeric(pos[2])
+        
+        # si le parsing échoue, on retourne NULL
+        if (is.na(start_val) || is.na(end_val)) return(NULL)
+        
         data.frame(
             chr = paste0("chr", chr),
-            start = as.numeric(pos[1]),
-            end = as.numeric(pos[2]),
+            start = start_val,
+            end = end_val,
             probe_id = probe_id,
             illumina_id = illumina_id,
             symbol = symbol,
             stringsAsFactors = FALSE
         )
     })
-
+    
+    # Filtrer les NULL avant de fusionner
+    ranges <- ranges[!sapply(ranges, is.null)]
+    if (length(ranges) == 0) return(data.frame())
+    
     do.call(rbind, ranges)
 }
 

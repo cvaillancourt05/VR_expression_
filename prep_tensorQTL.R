@@ -28,17 +28,31 @@ expr_hg38 <- merge(lifted, expr_data, by = "probe_id")
 pheno <- read.table("data/GCbroad_plink.txt", header = FALSE, stringsAsFactors = FALSE)
 colnames(pheno) <- c("FID", "IID", "Diagnostic")
 pheno$IID <- as.character(pheno$IID)
-rownames(pheno) <- pheno$IID
+pheno$FID <- as.character(pheno$FID)
+
+# Création de l'ID complet (FID + IID)
+pheno$ID <- paste(pheno$FID, pheno$IID, sep = "_")
+rownames(pheno) <- pheno$ID
 
 # Éliminer les zéros 
 pheno <- pheno[pheno$Diagnostic != 0, ]
 # Recodage binaire : Atteint (1), Non-atteint (0)
 pheno$statut_Maladie <- ifelse(pheno$Diagnostic == 2, 1, 0)
 
-# Intersection
+# Harmonisation des ID
 cols_base <- c("probe_id", "illumina_id", "symbol", "chr_hg38", "start_hg38", "end_hg38")
 ids_expression <- setdiff(colnames(expr_hg38), cols_base)
-ind_existants <- intersect(ids_expression, pheno$IID)
+map_ids <- setNames(pheno$ID, pheno$IID)
+new_ids <- map_ids[ids_expression]
+
+ids_valide <- ids_expression[!is.na(new_ids)]
+new_ids_valides <- new_ids[!is.na(new_ids)]
+
+colnames(expr_hg38)[match(ids_valide, colnames(expr_hg38))] <- new_ids_valides
+
+# Intersection
+ids_expression <- setdiff(colnames(expr_hg38), cols_base)
+ind_existants <- intersect(ids_expression, pheno$ID)
 
 # =========================================
 # Formatage de la matrice d'expression BED
