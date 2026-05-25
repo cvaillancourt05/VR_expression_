@@ -14,9 +14,6 @@ expr_data <- read.delim("data/Adjusted_expression_values.txt", sep = "\t", check
 # Harmonisation du nom de la première colonnne
 colnames(expr_data)[1] <- "probe_id"
 
-sondes_expr <- read.table("data/liste_sondes_expr_GC.txt", header = FALSE, stringsAsFactors = FALSE)$V1
-expr_data <- expr_data[expr_data$probe_id %in% sondes_expr, ]
-
 # Fusion
 expr_hg38 <- merge(lifted, expr_data, by = "probe_id")
 
