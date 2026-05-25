@@ -13,7 +13,8 @@ pheno <- pheno[pheno$Diagnostic != 0, ]
 pheno$Status <- ifelse(pheno$Diagnostic == 2, 1, 0)
 
 # Filtrage des sondes pour obtenir seulement les sondes exprimées
-sondes_exprimees <- fread("data/liste_sondes_expr_GC.txt", header = FALSE, col.names ="probe_id")$probe_id
+#sondes_exprimees <- fread("data/liste_sondes_expr_GC.txt", header = FALSE, col.names ="probe_id")$probe_id
+sondes_exprimees <- fread("results/liste_sondes_exprimees.txt", header = FALSE, col.names = "probe_id")$probe_id
 
 # Données ajustées sans retrait du lead cis-eQTL (AVEC)
 expr_avec_eqtl <- fread("data/Adjusted_expression_values.txt", data.table = FALSE)
@@ -86,17 +87,22 @@ z_initial_sans_ref_a <- calculer_scores_z(mat_expr_sans, ids_reference = ids_att
 # Avec eQTL
 outliers_par_ind_avec <- colSums(abs(z_initial_avec_ref_na) >= 2, na.rm = TRUE)
 ids_gardes_avec <- names(outliers_par_ind_avec[outliers_par_ind_avec <= 100])
+ids_outliers_globaux_avec <- names(outliers_par_ind_avec[outliers_par_ind_avec > 100])
 
 ids_atteints_avec_clean <- intersect(ids_atteints_avec, ids_gardes_avec)
 ids_non_atteints_avec_clean <- intersect(ids_non_atteints_avec, ids_gardes_avec)
 
+write.table(ids_outliers_globaux_avec, "results/Zscores/outliers_globaux_avec.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
 # Sans eQTL
 outliers_par_ind_sans <- colSums(abs(z_initial_sans_ref_na) >= 2, na.rm = TRUE)
 ids_gardes_sans <- names(outliers_par_ind_sans[outliers_par_ind_sans <= 100])
+ids_outliers_globaux_sans <- names(outliers_par_ind_sans[outliers_par_ind_sans > 100])
 
 ids_atteints_sans_clean <- intersect(ids_atteints_sans, ids_gardes_sans)
 ids_non_atteints_sans_clean <- intersect(ids_non_atteints_sans, ids_gardes_sans)
 
+write.table(ids_outliers_globaux_sans, "results/Zscores/outliers_globaux_sans.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
 # ======================
 # Recalcul des scores Z
 # ======================
