@@ -12,59 +12,56 @@ raw_geno <- fread("/lustre09/project/6000443/chloev/genotypes.raw")
 # Préparation des matrices
 # =========================
 
-lead_eqtls <- eqtl_results[order(pval_nominal), head(.SD, 1), by = phenotype_id]
+setorder(eqtl_results, phenotype_id, pval_nominal)
+lead_eqtls <- eqtl_results[!duplicated(phenotype_id)]
 
-# Matrice du génotype
-rownames_geno <- as.character(raw_geno$IID)
-cols_variants <- colnames(raw_geno)[-(1:6)]
+mat_samples <- intersect(colnames(expression_mat)[-1], as.character(raw_geno$IID))
+expression_clean <- expression_mat[probe %in% lead_eqtls$phenotype_id]
 
-mat_geno_t <- as.matrix(raw_geno[, cols_variants, with = FALSE])
-rownames(mat_geno_t) <- rownames_geno
-mat_geno <- t(mat_geno_t)
-
-# Matrice d'expression
-samples <- intersect(colnames(expression_mat)[-1], colnames(mat_geno))
-genes_communs <- intersect(expression_mat$probe, lead_eqtls$phenotype_id)
-sub_expr <- expression_mat[probe %in% genes_communs]
-
-# Gestion des doublons
-if (any(duplicated(sub_expr$probe))) {
-  n_dups <- sum(duplicated(sub_expr$probe))
-  sub_expr <- sub_expr[!duplicated(probe)]
+# Filtrage pour le lead
+if (any(duplicated(expression_clean$probe))) {
+  pvals <- lead_eqtls[, .(phenotype_id, pval_nominal)]
+  expression_clean <- merge(expression_clean, pvals, by.x = "probe", by.y = "phenotype_id", all.x = TRUE)
+  
+  setorder(expression_clean, probe, pval_nominal)
+  expression_clean <- expression_clean[!duplicated(probe)]
+  expression_clean[, pval_nominal := NULL]
 }
 
-mat_expr <- as.matrix(sub_expr[, ..samples])
-rownames(mat_expr) <- sub_expr$probe
+lead_eqtls_clean <- lead_eqtls[phenotype_id %in% expression_clean$probe]
+setorder(lead_eqtls_clean, phenotype_id)
+setorder(expression_clean, probe)
 
-# =======================
-# Alignement des données
-# =======================
 
-lead_eqtls <- lead_eqtls[phenotype_id %in% sub_expr$probe]
-lead_eqtls <- lead_eqtls[!duplicated(phenotype_id)]
+# Matrice du génotype
+colnames(raw_geno) <- gsub("_[A-Z0-9]$", "", colnames(raw_geno))
+variants_presents <- intersect(colnames(raw_geno), lead_eqtls_clean$variant_id)
+raw_geno_filtered <- raw_geno[IID %in% mat_samples]
+cols_to_keep <- c("IID", intersect(colnames(raw_geno), lead_eqtls$variant_id))
+geno_clean <- raw_geno_filtered[, ..cols_to_keep]
 
-variants <- lead_eqtls$variant_id
-mat_geno <- mat_geno[rownames(mat_geno) %in% variants, samples, drop = FALSE]
+geno_t <- transpose(geno_clean, make.names = "IID", keep.names = "variant_id")
 
 # ====================================
 # Retrait de l'effet du lead cis-eQTL
 # ====================================
 
-# Matrice pour les données ajustées
-mat_adjusted_expr <- mat_expr
-
-for (i in 1:nrow(lead_eqtls)) {
-  
+for (i in 1:nrow(lead_eqtls_clean)) {
   gene <- lead_eqtls$phenotype_id[i]
   variant <- lead_eqtls$variant_id[i]
 
-  if (gene %in% rownames(mat_expr) && variant %in% rownames(mat_geno)) {
+  if (gene %in% rownames(expression_clean) && variant %in% geno_t$variant_id) {
     
-    y <- as.numeric(mat_expr[gene, ])
-    x <- as.numeric(mat_geno[variant, ])
+    y <- as.numeric(expression_clean[probe == gene, ..mat_samples])
+    x <- as.numeric(geno_t[variant_id == variant, ..mat_samples])
     
     model <- lm(y ~ x, na.action = na.exclude)
-    mat_adjusted_expr[gene, ] <- residuals(model) + mean(y, na.rm = TRUE)
+    ajusted_values <- residuals(model) + mean(y, na.rm = TRUE)
+
+    set(expression_clean, 
+      i = which(expression_clean$probe == gene), 
+      j = mat_samples,
+      value = as.list(adjusted_values))
   }
 }
 
@@ -72,5 +69,5 @@ for (i in 1:nrow(lead_eqtls)) {
 # Sauvegarde
 # ===========
 
-dt_adjusted <- as.data.table(mat_adjusted_expr, keep.rownames = "probe")
+dt_adjusted <- as.data.table(expression_clean, keep.rownames = "probe")
 fwrite(dt_adjusted, "/lustre09/project/6000443/expression_genes/resultats/Adjusted_expression_values_without_eqtl.txt", sep = "\t", quote = FALSE)
