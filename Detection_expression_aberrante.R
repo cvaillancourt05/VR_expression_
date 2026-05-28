@@ -53,7 +53,7 @@ calculer_scores_z <- function(donnees_matrice, ids_reference, ids_cible) {
 
   moyenne <- rowMeans(matrice_param, na.rm = TRUE)
   sd <- rowSds(matrice_param, na.rm = TRUE)
-  sd[sd == 0] <- NA
+  sd[sd == 0 | is.na(sd)] <- NA
 
   matrice_cible <- donnees_matrice[, ids_cible, drop = FALSE]
   
@@ -84,14 +84,13 @@ z_initial_sans_ref_a <- calculer_scores_z(mat_expr_sans, ids_reference = ids_att
 # ================================================
 # Nettoyage - identification des outliers globaux
 # ================================================
+seuil <- 1300
 
 # Avec eQTL
 outliers_par_ind_avec <- colSums(abs(z_initial_avec_ref_na) >= 2, na.rm = TRUE)
 
-seuil_avec <- quantile(outliers_par_ind_avec, 0.75) + 1.5 * IQR(outliers_par_ind_avec)
-
-ids_gardes_avec <- names(outliers_par_ind_avec[outliers_par_ind_avec <= seuil_avec])
-ids_outliers_globaux_avec <- names(outliers_par_ind_avec[outliers_par_ind_avec > seuil_avec])
+ids_gardes_avec <- names(outliers_par_ind_avec[outliers_par_ind_avec <= seuil])
+ids_outliers_globaux_avec <- names(outliers_par_ind_avec[outliers_par_ind_avec > seuil])
 
 ids_atteints_avec_clean <- intersect(ids_atteints_avec, ids_gardes_avec)
 ids_non_atteints_avec_clean <- intersect(ids_non_atteints_avec, ids_gardes_avec)
@@ -101,10 +100,8 @@ write.table(ids_outliers_globaux_avec, "results/Zscores/outliers_globaux_avec.tx
 # Sans eQTL
 outliers_par_ind_sans <- colSums(abs(z_initial_sans_ref_na) >= 2, na.rm = TRUE)
 
-seuil_sans <- quantile(outliers_par_ind_avec, 0.75) + 1.5 * IQR(outliers_par_ind_sans)
-
-ids_gardes_sans <- names(outliers_par_ind_sans[outliers_par_ind_sans <= seuil_sans])
-ids_outliers_globaux_sans <- names(outliers_par_ind_sans[outliers_par_ind_sans > seuil_sans])
+ids_gardes_sans <- names(outliers_par_ind_sans[outliers_par_ind_sans <= seuil])
+ids_outliers_globaux_sans <- names(outliers_par_ind_sans[outliers_par_ind_sans > seuil])
 
 ids_atteints_sans_clean <- intersect(ids_atteints_sans, ids_gardes_sans)
 ids_non_atteints_sans_clean <- intersect(ids_non_atteints_sans, ids_gardes_sans)

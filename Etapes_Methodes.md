@@ -51,7 +51,7 @@ Pour définir l'expression "normale" selon les individus atteints (seulement app
 
 Seuil d'expression aberrante : |Z|>= 2
 
-  - Retirer les individus avec >100 sondes dépassant ce seuil
+  - Retirer les individus avec >1300 sondes dépassant ce seuil (adapté pour le contexte des données)
 
   - Recalculer les scores Z sur la matrice nettoyée
 
@@ -97,6 +97,9 @@ Fenêtre 2 (Chagnon) : +/- 50kb autour du gène (capture plus de variants, augme
 			- Produit un fichier avec génotypes codés en nombre de copies de l'allèle mineur par individu
 
 - Utiliser bedtools pour extraire les variants génotypés dans les régions
+
+(.ped contient deux colonnes identifier fichier .map voir car variant rare faut identifier allèle mineur)
+.frq = frequence des allèles -- identiquer frequence pour chaque allèle 
 
 
 
@@ -184,4 +187,3 @@ Faire varier le seuil de Z
 Faire varier la fenêtre génomique
 
   - évalue si les associations sont stables
-
