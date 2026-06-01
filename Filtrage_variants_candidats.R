@@ -34,7 +34,7 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
     if (ncol(dt) <= 6) return(NULL)
     dt[, IID := as.character(IID)]
     cols_geno <- setdiff(colnames(dt), cols_meta)
-    setnames(dt, cols_geno, sub("_[A-Z]$", "", cols_geno))
+    setnames(dt, cols_geno, sub("_[A-Za-z0-9]+$", "", cols_geno))
     dt[, c("IID", setdiff(colnames(dt), cols_meta)), with = FALSE]
   })
   geno_list <- geno_list[!sapply(geno_list, is.null)]
@@ -46,7 +46,7 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
 
   # Fréquences alléliques
   freq <- fread(file.path(data_dir, sprintf("freq_variants_%s.afreq", fenetre)))
-  setnames(freq, c("CHROM", "variant_id", "REF", "ALT", "ALT_FREQ", "OBS_CT"))
+  setnames(freq, old = c("CHROM", "ID"), new = c("CHROM", "variant_id"), skip_absent= TRUE)
   dt_freq <- freq[, .(variant_id, REF, ALT, ALT_FREQ)]
 
   # Scores Z
@@ -61,28 +61,29 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   work <- merge(regions_dt, geno_porteurs, by = "variant_id")
   work <- merge(work, z_long[, .(probe_id, IID, Z, is_outlier, direction)], by = c("probe_id", "IID"), all.x = TRUE)
 
-  # Critère 1
+  # Critère de présence
   resume <- work[!is.na(is_outlier), .(n_outliers = sum(is_outlier), n_non_outliers = sum(!is_outlier), directions = paste(unique(direction[is_outlier]), collapse = ",")), by = .(variant_id, probe_id, symbol)]
-  critere_1 <- resume[n_outliers >= 1 & n_non_outliers == 0]
+  critere_pres <- resume[n_outliers >= 1 & n_non_outliers == 0]
 
-  # Critère 2
-  critere_2 <- critere_1[directions %in% c("UP", "DOWN")]
+  # Critère de direction cohérente
+  critere_dir <- critere_pres[directions %in% c("UP", "DOWN")]
 
-  key <- paste(work$variant_id, work$probe_id)
-  key_2 <- paste(critere_2$variant_id, critere_2$probe_id)
+  work[, combo_key := paste(variant_id, probe_id)]
+  critere_dir[, combo_key := paste(variant_id, probe_id)]
 
-  outliers_porteurs <- work[is_outlier == TRUE & key %in% key_2, .(individus_outliers = paste(IID, collapse = ";")), by = .(variant_id, probe_id)]
+  outliers_porteurs <- work[is_outlier == TRUE & combo_key %in% critere_dir$combo_key, .(individus_outliers = paste(IID, collapse = ";")), by = .(variant_id, probe_id)]
 
-  z_outliers <- work[is_outlier == TRUE & key %in% key_2, .(Z_outliers = paste(round(Z, 3), collapse = ";")), by = .(variant_id, probe_id)]
+  z_outliers <- work[is_outlier == TRUE & combo_key %in% critere_dir$combo_key, .(Z_outliers = paste(round(Z, 3), collapse = ";")), by = .(variant_id, probe_id)]
 
-  candidats <- merge(critere_2, outliers_porteurs, by = c("variant_id", "probe_id"))
+  # Construction du tableau final des variants candidats
+  candidats <- merge(critere_dir, outliers_porteurs, by = c("variant_id", "probe_id"))
   candidats <- merge(candidats, z_outliers, by = c("variant_id", "probe_id"))
   candidats <- merge(candidats, dt_freq, by = "variant_id", all.x = TRUE)
 
   setnames(candidats, "directions", "direction_expression")
   setorder(candidats, symbol, probe_id, variant_id)
 
-  candidats[, .(variant_id, probe_id, symbol, direction_expression, n_outliers_porteurs = n_outliers, individus_outliers, Z_outliers, REF, ALT, ALT_FREQ)]
+  return(candidats[, .(variant_id, probe_id, symbol, direction_expression, n_outliers_porteurs = n_outliers, individus_outliers, Z_outliers, REF, ALT, ALT_FREQ)])
 
 }
 
@@ -90,13 +91,14 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
 # Boucle sur toutes les combinaisons
 # -----------------------------------
 
-cols_meta <- c("FID", "IID", "PAT", "MAT", "SEX", "PHENOTYPE")
-
 for (fenetre in fenetres) {
   for (version_z in names(scores_z)) {
+    
     out_file <- file.path(data_dir, sprintf("variants_candidats_%s_%s.txt", fenetre, version_z))
     resultat <- filtrer_variants(fenetre, version_z, scores_z[[version_z]])
+    
     fwrite(resultat, out_file, sep = "\t", quote = FALSE
+
     )
   }
 }
