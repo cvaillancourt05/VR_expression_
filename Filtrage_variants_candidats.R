@@ -45,8 +45,8 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   geno_porteurs <- geno_long[!is.na(genotype) & genotype > 0]
 
   # Fréquences alléliques
-  freq <- fread(file.path(data_dir, sprintf("freq_variants_%s.afreq", fenetre)))
-  setnames(freq, old = c("CHROM", "ID"), new = c("CHROM", "variant_id"), skip_absent= TRUE)
+  freq <- fread(file.path(data_dir, sprintf("freq_variants_%s.frq", fenetre)))
+  setnames(freq, old = c("SNP", "A1", "A2", "MAF"), new = c("variant_id", "REF", "ALT", "ALT_FREQ"), skip_absent= TRUE)
   dt_freq <- freq[, .(variant_id, REF, ALT, ALT_FREQ)]
 
   # Scores Z
@@ -87,6 +87,7 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
 
 }
 
+
 # -----------------------------------
 # Boucle sur toutes les combinaisons
 # -----------------------------------
@@ -97,8 +98,6 @@ for (fenetre in fenetres) {
     out_file <- file.path(data_dir, sprintf("variants_candidats_%s_%s.txt", fenetre, version_z))
     resultat <- filtrer_variants(fenetre, version_z, scores_z[[version_z]])
     
-    fwrite(resultat, out_file, sep = "\t", quote = FALSE
-
-    )
+    fwrite(resultat, out_file, sep = "\t", quote = FALSE)
   }
 }

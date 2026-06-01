@@ -2,16 +2,14 @@ library(biomaRt)
 library(data.table)
 library(org.Hs.eg.db)
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-source("liftOver.R")
 
 # =======================
 # Chargement des données
 # =======================
 
-genes <- fread("results/HumanHT12v4_hg38_annotations.csv")
+lifted <- fread("results/HumanHT12v4_hg38_annotations.csv")
 sondes_exprimees <- fread("results/liste_sondes_exprimees.txt", header = FALSE, col.names = "probe_id")$probe_id
 
-setDT(lifted)
 lifted <- lifted[probe_id %in% sondes_exprimees]
 lifted <- lifted[!is.na(symbol) & symbol != "" & symbol != "---"]
 
