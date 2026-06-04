@@ -70,9 +70,9 @@ probe_gene <- merge(
 fwrite(probe_gene, "results/region_cis/probe_gene_map.txt", sep = "\t", quote = FALSE)
 
 
-# ======================================
+# --------------------------------------
 # Création du fichier BED pour bedtools
-# ======================================
+# --------------------------------------
 
 # --Format BED : chr | start (0-based) | end | ID (sonde)
 creer_bed <- function(dt, fenetre_kb) {
