@@ -99,27 +99,26 @@ z_initial_sans_ref_a <- calculer_scores_z(mat_expr_sans, ids_reference = ids_att
 # Nettoyage - identification et retrait des outliers globaux
 # -----------------------------------------------------------
 
-# --Un individu est un outlier global s'il dépasse |Z| >= 2 sur plus de 1300
-seuil <- 1300
-
 # Avec eQTL
 outliers_par_ind_avec <- colSums(abs(z_initial_avec_ref_na) >= 2, na.rm = TRUE)
+seuil_avec <- quantile(outliers_par_ind_avec, 0.75) + 1.5 * IQR(outliers_par_ind_avec)
 
-ids_gardes_avec <- names(outliers_par_ind_avec[outliers_par_ind_avec <= seuil])
+ids_gardes_avec <- names(outliers_par_ind_avec[outliers_par_ind_avec <= seuil_avec])
 ids_atteints_avec_clean <- intersect(ids_atteints_avec, ids_gardes_avec)
 ids_non_atteints_avec_clean <- intersect(ids_non_atteints_avec, ids_gardes_avec)
 
-ids_outliers_globaux_avec <- names(outliers_par_ind_avec[outliers_par_ind_avec > seuil])
+ids_outliers_globaux_avec <- names(outliers_par_ind_avec[outliers_par_ind_avec > seuil_avec])
 write.table(ids_outliers_globaux_avec, "results/Zscores/outliers_globaux_avec.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
 
 # Sans eQTL
 outliers_par_ind_sans <- colSums(abs(z_initial_sans_ref_na) >= 2, na.rm = TRUE)
+seuil_sans <- quantile(outliers_par_ind_sans, 0.75) + 1.5 * IQR(outliers_par_ind_sans)
 
-ids_gardes_sans <- names(outliers_par_ind_sans[outliers_par_ind_sans <= seuil])
+ids_gardes_sans <- names(outliers_par_ind_sans[outliers_par_ind_sans <= seuil_sans])
 ids_atteints_sans_clean <- intersect(ids_atteints_sans, ids_gardes_sans)
 ids_non_atteints_sans_clean <- intersect(ids_non_atteints_sans, ids_gardes_sans)
 
-ids_outliers_globaux_sans <- names(outliers_par_ind_sans[outliers_par_ind_sans > seuil])
+ids_outliers_globaux_sans <- names(outliers_par_ind_sans[outliers_par_ind_sans > seuil_sans])
 write.table(ids_outliers_globaux_sans, "results/Zscores/outliers_globaux_sans.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
 
 # ----------------------------------------------------
