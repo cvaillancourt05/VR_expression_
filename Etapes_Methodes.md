@@ -51,20 +51,15 @@ Pour définir l'expression "normale" selon les individus atteints (seulement app
 
 Seuil d'expression aberrante : |Z|>= 2
 
-  - Retirer les individus avec >1300 sondes dépassant ce seuil (adapté pour le contexte des données)
+  - Retirer les individus avec des sondes dépassant le seuil adaptatif (tiré de Ferarro et al.)
+        Seuil = Q3 + 1.5 * IQR
 
   - Recalculer les scores Z sur la matrice nettoyée
 
 
-
 ## 2. Identification des variants rares associés aux outliers (expression)
 
-### 2.1 Vérification de l'assemblage génomique
-
-Effectuer un liftover de hg19 à hg38 (fait dans Ferraro)
-  - Pour les sondes d'expression
-
-### 2.2 Définir les régions autour des gènes
+### 2.1 Définir les régions autour des gènes
 
 #### a) Obtenir les coordonnées des sondes
 
@@ -79,46 +74,44 @@ Fenêtre 1 (Mazzarotto) : +/- 10kb autour du gène (plus conservative, plus spé
 
 Fenêtre 2 (Chagnon) : +/- 50kb autour du gène (capture plus de variants, augmente le bruit)
 
-
-
 #### c) Création du fichier BED des régions cis
 
 - Générer un fichier BED avec une ligne par gène (coordonnées en hg38)
 		
     chr | start_gene - fenetre | end_gene + fenetre | ID
+    - Extraire les coordonnées et identifiants des variants rares depuis les fichiers VCF avec bcftools query
 
 - Intersecter avec les variants rares pour obtenir une liste des variants candidats (extrait identité des variants + gène associé)
 
-  bedtools intersect -> liste des variants dans les régions
+  bedtools intersect -> liste des variants dans les régions à l'intérieur des fenêtres cis
+  Gén.ration d'une table de paires variant-sonde uniques
 
-- Extraire les génotypes des variants pour tous individus avec plink ou bcftools ( matrice individus x variants avec génotypes codés 0/1/2)
+- Extraire les génotypes des variants pour tous individus avec plink ou bcftools (matrice individus x variants avec génotypes codés 0/1/2)
 
   Avec l'outil PLINK: 
 			- Produit un fichier avec génotypes codés en nombre de copies de l'allèle mineur par individu
 
 - Utiliser bedtools pour extraire les variants génotypés dans les régions
 
-(.ped contient deux colonnes identifier fichier .map voir car variant rare faut identifier allèle mineur)
-.frq = frequence des allèles -- identiquer frequence pour chaque allèle 
+### 2.2 Filtrer les variants "candidats" associés aux outliers
 
+#### a) Traitement des données
+- Nettoyage et exclusion des symboles manquants:
+   Dans les cas où le symbole du gène est manquant, mal annoté ou si la structure du nom ne permet pas d'extraire un symbole valide, la ligne est nettoyée ou exclue. Cela garantit que seuls les variants associés à un gène identifiable par un symbole officiel sont conservés.
 
-
-### 2.3 Filtrer les variants "candidats" associés aux outliers
-
-#### a) Critère de présence
+#### b) Critère de présence
 
 - Retenir uniquement les variants portés par au moins un individu identifié outlier (|Z|>= 2)
 
 - Un variant présent chez un non-outlier pour ce même gène est exclu
 
-#### b) Critère de direction cohérente
+#### c) Critère de direction cohérente
 
 Si un variant est porté par plusieurs individus outliers:
 
 - tous doivent présenter l'expression aberrante dans le même sens
 
 - si ce sont des directions opposées, le variant est exclu
-
 
 #### Résultat : liste de variants candidats avec
 
@@ -137,7 +130,7 @@ Si un variant est porté par plusieurs individus outliers:
 
 ### 3.1 Calcul du score IOGC par individu
 
-IOGC = nombre de gènes distincts pour lesquels un individu porte au moins un variant candidat
+IOGC = nombre de gènes (sondes) distincts pour lesquels un individu porte au moins un variant candidat
 
   - Plusieurs variants dans le même gène comptent pour 1
 
