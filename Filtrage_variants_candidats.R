@@ -4,7 +4,7 @@
 #
 # Entrées :
 #  - Paires variant-sonde -- variants_dans_regions_<fenetre>.bed
-#  - Génotypes encodées 0/1/2 par chromosome -- genotypes_<fenetre>_chr*.raw
+#  - 
 #  - Fréquences alléliques (pour annotation) -- freq_variants_<fenetre>.frq
 #  - Matrice de scores Z -- Z_<version>.txt
 #
@@ -45,19 +45,23 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   
   # --Fusion
   geno_porteurs <- rbindlist(lapply(tsv_files, fread, header = FALSE, sep = "\t", col.names = c("IID", "variant_id", "genotype")))
+  geno_porteurs[, IID := sub(".*_", "", IID)]
   geno_porteurs[, IID := as.character(IID)]
   geno_porteurs[, variant_id := as.character(variant_id)]
-
-  geno_porteurs <- geno_porteurs[variant_id %in% regions_dt$variant_id]
+  
+  ids_valides <- regions_dt[["variant_id"]]
+  geno_porteurs <- geno_porteurs[variant_id %in% ids_valides]
   gc()
 
   # --Liste cible
-  work_initial <- merge(regions_dt, geno_porteurs, by = "variant_id")
+  setkey(regions_dt, variant_id)
+  setkey(geno_porteurs, variant_id)
+  work_initial <- merge(regions_dt, geno_porteurs, by = "variant_id", allow.cartesian = TRUE)
   rm(regions_dt, geno_porteurs)
   gc()
 
-  genes_cibles <- unique(work_initial$probe_id)
-  individus_cibles <- unique(work_initial$IID)
+  genes_cibles <- unique(work_initial[["probe_id"]])
+  individus_cibles <- unique(work_initial[["IID"]])
 
   # --Scores Z
   # Calcul du status outlier et de la direction de la déviation
@@ -67,8 +71,8 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   setnames(zscores, 1, "probe_id")
   zscores <- zscores[probe_id %in% genes_cibles]
   
-
   z_long <- melt(zscores, id.vars = "probe_id", variable.name = "IID", value.name = "Z")
+
   rm(zscores)
   gc()
 
@@ -78,8 +82,18 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
 
   # --Table de travail
   # Porteurs x scores Z pour la sonde associée à chaque variant
-  work <- merge(work_initial, z_long[, .(probe_id, IID, Z, is_outlier, direction)], by = c("probe_id", "IID"), all.x = TRUE)
-  rm(work_initial, z_long)
+  #z_long <- unique(z_long, by = c("probe_id", "IID"))
+  #work_initial[, probe_id := as.character(probe_id)]
+  #z_long[, probe_id := as.character(probe_id)]
+
+  work_initial[, probe_id := as.character(probe_id)]
+  z_long[, probe_id := as.character(probe_id)]
+
+  setkey(work_initial, probe_id, IID)
+  z_sub <- z_long[, .(probe_id, IID, Z, is_outlier, direction)]
+  setkey(z_sub, probe_id, IID)
+  work <- z_sub[work_initial, allow.cartesian = TRUE]
+  rm(work_initial, z_long, z_sub)
   gc()
 
   # --Critère de présence
@@ -108,7 +122,7 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   rm(work_sub)
 
   # --Chargement des fréquences alléliques pour annotation du tableau final
-  # Les VCF contiennent déjà uniquement des variants rares; aucun filtre sur ALT_FREQ n'est appliqué
+  # Les  contiennent déjà uniquement des variants rares; aucun filtre sur ALT_FREQ n'est appliqué
   # Harmonisation des noms de colonnes
   freq <- fread(file.path(data_dir, sprintf("freq_variants_%s.frq", fenetre)))
   setnames(freq, old = c("SNP", "A1", "A2", "MAF"), new = c("variant_id", "REF", "ALT", "ALT_FREQ"), skip_absent= TRUE)
@@ -118,7 +132,7 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   # --Construction du tableau final des variants candidats
   candidats <- merge(critere_dir, outliers_porteurs, by = c("variant_id", "probe_id"))
   candidats <- merge(candidats, z_outliers, by = c("variant_id", "probe_id"))
-  candidats <- merge(candidats, dt_freq, by = "variant_id", all.x = TRUE)
+  candidats <- merge(candidats, dt_freq, by = "variant_id", all.x = TRUE, )
 
   setnames(candidats, "directions", "direction_expression")
   setorder(candidats, symbol, probe_id, variant_id)
@@ -127,7 +141,6 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
 
 }
 
-
 # -----------------------------------
 # Boucle sur toutes les combinaisons
 # -----------------------------------
@@ -135,7 +148,8 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
 for (fenetre in fenetres) {
   for (version_z in names(scores_z)) {
     
-    out_file <- file.path(data_dir, sprintf("variants_candidats_%s_%s.txt", fenetre, version_z))
+    data_out <- "/home/chloev/links/projects/def-bureau/chloev/liste_variants/resultats"
+    out_file <- file.path(data_out, sprintf("variants_candidats_%s_%s.txt", fenetre, version_z))
     resultat <- filtrer_variants(fenetre, version_z, scores_z[[version_z]])
     
     fwrite(resultat, out_file, sep = "\t", quote = FALSE)
