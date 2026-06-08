@@ -22,6 +22,7 @@ fenetres <- c("10kb", "50kb")
 seuil_z <- 2
 
 data_dir <- "/home/chloev/links/projects/def-bureau/chloev/liste_variants/sorties/merge"
+filtre_dir <- "/lustre09/project/6033529/schizo/data/WGS_bs_2022/500_samples_cag_without_mask/RetroFunRVS"
 scores_z <- c("avec_eQTL_atteints" = "/home/chloev/links/projects/def-bureau/expression_genes/resultats/Zscores/Z_avec_eQTL_ref_atteints.txt", 
             "avec_eQTL_non_atteints" = "/home/chloev/links/projects/def-bureau/expression_genes/resultats/Zscores/Z_avec_eQTL_ref_non_atteints.txt",
             "sans_eQTL_atteints" = "/home/chloev/links/projects/def-bureau/expression_genes/resultats/Zscores/Z_sans_eQTL_ref_atteints.txt",
@@ -116,10 +117,7 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   rm(work)
   gc()
 
-  outliers_porteurs <- work_sub[, .(individus_outliers = paste(IID, collapse = ";")), by = .(variant_id, probe_id)]
-
-  z_outliers <- work_sub[, .(Z_outliers = paste(round(Z, 3), collapse = ";")), by = .(variant_id, probe_id)]
-  rm(work_sub)
+  outliers_porteurs <- work_sub[, .(variant_id, probe_id, IID, Z = round(Z, 3))]
 
   # --Chargement des fréquences alléliques pour annotation du tableau final
   # Les  contiennent déjà uniquement des variants rares; aucun filtre sur ALT_FREQ n'est appliqué
@@ -129,15 +127,20 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   dt_freq <- freq[, .(variant_id, REF, ALT, ALT_FREQ)]
   rm(freq)
 
-  # --Construction du tableau final des variants candidats
+  # --Construction du tableau des variants candidats
   candidats <- merge(critere_dir, outliers_porteurs, by = c("variant_id", "probe_id"))
-  candidats <- merge(candidats, z_outliers, by = c("variant_id", "probe_id"))
   candidats <- merge(candidats, dt_freq, by = "variant_id", all.x = TRUE, )
 
+  # --Filtrage pour les variants rares finaux dans candidats
+  fichiers_map <- list.files(filtre_dir, pattern = ".*_%s_chr.*\\.map$", full.names = TRUE)
+  variants_rares_finaux <- unique(rbindlist(lapply(fichiers_map, fread, header = FALSE, select = 2))$V2)
+  candidats <- candidats[variant_id %in% variants_rares_finaux]
+
+  # --Construction du tableau final des variants candidats finaux
   setnames(candidats, "directions", "direction_expression")
   setorder(candidats, symbol, probe_id, variant_id)
 
-  return(candidats[, .(variant_id, probe_id, symbol, direction_expression, n_outliers_porteurs = n_outliers, individus_outliers, Z_outliers, REF, ALT, ALT_FREQ)])
+  return(candidats[, .(variant_id, probe_id, symbol, direction_expression, n_outliers_porteurs = n_outliers, individu_outlier = IID, Z_outlier = Z, REF, ALT, ALT_FREQ)])
 
 }
 

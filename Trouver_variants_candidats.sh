@@ -13,14 +13,13 @@ module load bedtools/2.31.0
 # Identifie les variants rares dans les régions cis des sondes d'expression et extrait leurs génotypes
 # 
 # Entrées :
-#  - VCF compressés par chromosome (Variants rares déjà filtrés en amont)
+#  - VCF compressés par chromosome
 #  - Régions cis par fenêtre -- region_cis_10kb/50kb.bed
 #
 # Sorties : 
 #  - Paires variant-sonde -- variants_dans_regions_<fenetre>.bed
 #  - Liste des variants dans les régions cis -- liste_variants_<fenetre>.txt
 #  - Fréquences alléliques des variants retenus (pour annotation) -- freq_variants_<fenetre>.frq 
-#  - Génotypes encodés 0/1/2 par chromosome -- genotypes_<fenetre>_chr*.raw
 # ------------------------------------------------------------------------------------------------------
 
 # --------
@@ -31,10 +30,12 @@ module load bedtools/2.31.0
 seq_dir="/lustre09/project/6033529/schizo/data/WGS_bs_2022/500_samples_cag_without_mask/RetroFunRVS"
 # --Préfixe commun des VCF
 vcf_prefix="impute5_gigi2_combined_seq_RV"
+
 # --Préfixe commun des fichiers
 frq_prefix="impute5_gigi2_combined_seq_RV_FINAL"
 # --Répertoire des fichiers frq
 frq_dir="/lustre09/project/6033529/schizo/data/WGS_bs_2022/freq_RV/"
+
 # --Répertoire de sortie pour les fichiers intermédiaires par chromosome
 out_dir="/home/chloev/links/projects/def-bureau/chloev/liste_variants/sorties"
 # --Répertoire  contenant les fichiers de régions cis
@@ -84,12 +85,12 @@ for FENETRE in 10kb 50kb; do
     cat "${out_dir}"/liste_variants_${FENETRE}_chr*.txt | sort -u > "${merge_dir}/liste_variants_${FENETRE}.txt"
 
     # --Extraction des fréquences alléliques pour annotation seulement
-    head -1 "${frq_dir}/${frq_prefix}_chr1.frq" > "${merge_dir}/freq_variants_${FENETRE}.frq"
+    head -1 "${frq_dir}/${frq_prefix}_chr1.frq.cc" > "${merge_dir}/freq_variants_${FENETRE}.frq"
 
     for chr in $(seq 1 22); do
-        frq="${frq_dir}/${frq_prefix}_chr${chr}.frq"
-        liste="${out_dir}/liste_variants_${FENETRE}_chr${chr}.txt"
-        awk 'NR==FNR {ids[$1]=1; next} $2 in ids' "$liste" "$frq" >> "${merge_dir}/freq_variants_${FENETRE}.frq"
+        frq="${frq_dir}/${frq_prefix}_chr${chr}.frq.cc"
+        liste="${merge_dir}/liste_variants_${FENETRE}.txt"
+        awk 'NR==FNR {ids[$1]=1; next} FNR > 1 && $2 in ids' "$liste" "$frq" >> "${merge_dir}/freq_variants_${FENETRE}.frq"
     done 
 
     # --Extraction finale des génotypes par chromosome depuis les VCF
