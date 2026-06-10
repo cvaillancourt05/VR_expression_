@@ -19,9 +19,9 @@ library(readr)
 # Fonction de régression logistique standard (GLM)
 # ------------------------------------------------
 
-fonction_glm <- function(data, pheno, score_col, covars) {
+fonction_glm <- function(data, pheno, score_col) {
 
-  variables <- c(score_col, covars)
+  variables <- score_col
   form_str <- paste0(pheno, " ~ ", paste(variables, collapse = " + "))
   model_data <- data %>% drop_na(all_of(c(pheno, variables)))
 
@@ -51,14 +51,14 @@ fonction_glm <- function(data, pheno, score_col, covars) {
 # Fonction des équations d'estimation généralisées (GEE)
 # ------------------------------------------------------
 
-fonction_gee <- function(data, pheno, score_col, covars) {
+fonction_gee <- function(data, pheno, score_col) {
 
-  variables <- c(score_col, covars)
+  variables <- score_col
   form_str <- paste0(pheno, " ~ ", paste(variables, collapse = " + "))
   model_data <- data %>% drop_na(all_of(c(pheno, "FID", variables))) %>% arrange(FID)
 
   model <- geeglm(as.formula(form_str), data = model_data, id = factor(FID), 
-            family = binomial(link = "logit", corstr = "independence", scale.fix = TRUE, scale.value = 1))
+            family = binomial(link = "logit"), corstr = "independence", scale.fix = TRUE, scale.value = 1)
   summaryModel <- summary(model)
 
   if (!score_col %in% rownames(summaryModel$coefficients)) return (NULL)
@@ -85,8 +85,7 @@ fonction_gee <- function(data, pheno, score_col, covars) {
 # ------------------------------------
 
 data <- read_csv("scores_iogc.csv", show_col_types = FALSE)
-covariables <- NULL
-phenotype = "Phenotype"
+pheno = "Phenotype"
 
 col_scores <- grep("IOGC_adj_", colnames(data), value = TRUE)
 
