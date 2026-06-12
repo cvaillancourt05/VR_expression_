@@ -58,7 +58,7 @@ fonction_gee <- function(data, pheno, score_col) {
   model_data <- data %>% drop_na(all_of(c(pheno, "FID", variables))) %>% arrange(FID)
 
   model <- geeglm(as.formula(form_str), data = model_data, id = factor(FID), 
-            family = binomial(link = "logit"), corstr = "independence", scale.fix = TRUE, scale.value = 1)
+            family = binomial(link = "logit"), corstr = "independence", scale.fix = TRUE, scale.value = rep(1, length(model_data$FID)))
   summaryModel <- summary(model)
 
   if (!score_col %in% rownames(summaryModel$coefficients)) return (NULL)
@@ -80,30 +80,69 @@ fonction_gee <- function(data, pheno, score_col) {
   )
 }
 
+# -----------------------------------
+# Chargement des fichiers phénotypes
+# -----------------------------------
+
+pheno_global <- read_table("results/phenotypes_formate.txt", show_col_types = FALSE) %>%
+  mutate(FID = as.character(FID), IID = as.character(IID), Pheno_Global = as.numeric(Phenotype)) %>%
+  select(FID, IID, Pheno_Global)
+
+pheno_sz <- read_table("data/SZbroad_plink.txt", show_col_types = FALSE) %>%
+  mutate(FID = as.character(FID), IID = as.character(IID), Pheno_SZ = as.numeric(Phenotype)) %>%
+  select(FID, IID, Pheno_SZ)
+
+pheno_bp <- read_table("data/BPbroad_plink.txt", show_col_types = FALSE) %>%
+  mutate(FID = as.character(FID), IID = as.character(IID), Pheno_BP = as.numeric(Phenotype)) %>%
+  select(FID, IID, Pheno_BP)
+
 # ------------------------------------
 # Boucle pour toutes les combinaisons
 # ------------------------------------
 
-data <- read_csv("scores_iogc.csv", show_col_types = FALSE)
-pheno = "Phenotype"
+scores_dir <- "/home/chloev/links/projects/def-bureau/chloev/"
+fichiers_scores <- list.files(scores_dir, pattern = "^score_iogc_.*\\.txt$", full.names = TRUE)
 
-col_scores <- grep("IOGC_adj_", colnames(data), value = TRUE)
+phenotypes <- list("Pheno_Global", "Pheno_SZ", "Pheno_BP")
+pheno_dt <- reduce(list(pheno_global, pheno_sz, pheno_bp), full_join)
 
 resultats <- list()
-for (score in col_scores) {
-  # --GLM
-  res_glm <- tryCatch(fonction_glm(data, pheno, score, covariables),
-                        error = function(e) { message (" Échec GLM : ", e$message); NULL})
-  # --GEE
-  res_gee <- tryCatch(fonction_gee(data, pheno, score, covariables),
-                        error = function(e) { message (" Échec GEE : ", e$message); NULL})
 
-  resultats[[score]] <- bind_rows(res_glm, res_gee)
+for (f_path in fichiers_scores) {
+
+  # --Extraire le nom du fichier
+  f_name <- basename(f_path)
+  condition <- sub("score_iogc_", "", f_name)
+  condition <- gsub("\\.txt$", "", condition)
+
+  # --Charger le fichier
+  dt_score <- read_tsv(f_path, show_col_types = FALSE) %>% mutate(FID = as.character(FID), IID = as.character(IID))
+
+  for (nom_pheno in phenotypes) {
+
+    data_clean <- dt_score %>% inner_join(pheno_dt, by = c("FID", "IID"))
+    cle_combinaison <- paste(condition, nom_pheno, sep = "__")
+
+    # --GLM
+    res_glm <- tryCatch(fonction_glm(data_clean, nom_pheno, "score_iogc"),
+                        error = function(e) { message(" Échec GLM pour ", cle_combinaison, " : ", e$message); NULL })
+    # --GEE
+    res_gee <- tryCatch(fonction_gee(data_clean, nom_pheno, "score_iogc"),
+                        error = function(e) { message(" Échec GEE pour ", cle_combinaison, " : ", e$message); NULL })
+
+    # --Stockage des résultats
+    res_stock <- bind_rows(res_glm, res_gee)
+    if (!is.null(res_stock) && nrow(res_stock) > 0) {
+      res_stock$Condition <- condition
+      resultats[[cle_combinaison]] <- res_stock
+    }
+  }
 }
 
-resultats_finaux <- bind_rows(resultats) %>% 
-  mutate(Condition = gsub("IOGC_adj_", "", Variable)) %>% 
+# -----------
+# Sauvegarde
+# -----------
+resultats_finaux <- bind_rows(resultats) %>%
   select(Condition, Method, Phenotype, OR, P_Value, CI_Lower, CI_Upper, AUC, N_cas, N_total)
 
-# --Sauvegarde
-write_csv(resultats_finaux, "associations_finales_iogc.csv")
+write_csv(resultats_finaux, "results/associations_finales_iogc.csv")
