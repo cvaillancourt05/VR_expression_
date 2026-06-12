@@ -3,72 +3,78 @@
 # Calcule le burden de variants rares (IOGC)
 #
 # Entrées :
-#  - Cohorte pour l'annotation
+#  - Fichier des phénotypes pour la strcuture FID/IID
 #  - Variants candidats issus de Filtrage_variants_candidats.R 
 #
 # Sortie :
-#  - Scores bruts selon les différentes conditions --scores_iogc.csv
+#  - Scores bruts selon les différentes conditions
 # -------------------------------------------------------------------------------------------
 
-library(dplyr)
-library(tidyr)
-library(readr)
-library(readxl)
+library(tidyverse)
+library(data.table)
 
-# --Chargement des données
-cohorte_ids <- read_table("/home/chloev/links/projects/def-bureau/chloev/phenotypes.txt", n_max = 0, show_col_types = FALSE) # --Pour avoir FID et IID
-cohorte_ids <- data.frame(FID_IID = colnames(premiere_ligne)[-1], stringsAsFactors = FALSE) %>%
-  # Sépare le format FID_IID en deux colonnes distinctes
+# -----------
+# Paramètres
+# -----------
+
+fenetres <- c("10kb", "50kb")
+data_dir <- "/home/chloev/links/projects/def-bureau/expression_genes/resultats/variants_rares_associes_aux_outliers/"
+out_dir <- "/home/chloev/links/projects/def-bureau/chloev/"
+
+#-- Versions des scores Z à traiter
+versions_z <- c("avec_eQTL_atteints", "avec_eQTL_non_atteints", "sans_eQTL_atteints", "sans_eQTL_non_atteints")
+
+# ----------------------
+# Chargement des données
+# ----------------------
+
+df_cohorte <- read_table("/home/chloev/links/projects/def-bureau/chloev/phenotypes.txt", n_max = 0, show_col_types = FALSE) # --Pour avoir FID et IID
+df_cohorte <- data.frame(FID_IID = colnames(df_cohorte)[-1], stringsAsFactors = FALSE) %>%
   separate_wider_delim(FID_IID, delim = "_", names = c("FID", "IID")) %>%
   mutate(FID = as.character(FID), IID = as.character(IID))
 
-prefix = "/home/chloev/links/projects/def-bureau/expression_genes/resultats/variants_rares_associes_aux_outliers/"
-fichiers_variants <- c(
-  file.path(prefix, "variants_candidats_10kb_avec_eQTL_atteints.txt"),
-  file.path(prefix, "variants_candidats_10kb_avec_eQTL_non_atteints.txt"),
-  file.path(prefix, "variants_candidats_10kb_sans_eQTL_atteints.txt"),
-  file.path(prefix, "variants_candidats_10kb_sans_eQTL_non_atteints.txt"),
-  file.path(prefix, "variants_candidats_50kb_avec_eQTL_atteints.txt"),
-  file.path(prefix, "variants_candidats_50kb_avec_eQTL_non_atteints.txt"),
-  file.path(prefix, "variants_candidats_50kb_sans_eQTL_atteints.txt"),
-  file.path(prefix, "variants_candidats_50kb_sans_eQTL_non_atteints.txt")
-)
+# ----------------------------------------
+# Fonction pour le calcul des scores IOGC
+# ----------------------------------------
 
-# -----------------------
-# Calcul des scores IOGC
-# -----------------------
+calculer_score_iogc <- function(fenetre, version_z, cohorte) {
 
-scores_iogc <- cohorte_ids %>% arrange(FID, IID)
+  input_file <- file.path(data_dir, sprintf("variants_candidats_%s_%s.txt", fenetre, version_z))
 
-for(fichier in fichiers_variants) {
+  # --Lecture des variants candidats
+  candidats <- fread(input_file, select = c("variant_id", "probe_id", "symbol", "individu_outlier"))
+  setnames(candidats, "individu_outlier", "IID")
+  candidats[, IID := as.character(IID)]
 
-  # --Extraction des noms
-  nom_fichier <- basename(fichier)
-  nom_condition <- gsub("variants_candidats_|.txt", "", fichier)
+  # --Déduplication
+  candidats_unique <- unique(candidats, by = c("IID", "symbol"))
 
-  # --Lecture des variants
-  variants <- read_delim(fichier, show_col_types = FALSE)
+  # --Calcul
+  scores_candidats <- candidats_unique[, .(score_iogc = .N, liste_variants = paste(unique(variant_id), collapse = ";")), by = .(IID)]
 
-  # --Compte du burden par individu
-  iogc_brut <- variants %>% 
-    mutate(individu_outlier = as.character(individu_outlier)) %>% 
-    distinct(individu_outlier, symbol) %>% 
-    count(individu_outlier, name = paste0("IOGC_raw_", nom_condition))
+  # --Inclusion de toute la cohorte
+  df_score_final <- right_join(scores_candidats, cohorte, by = "IID")
+  score_final <- as.data.table(df_score_final)
+  score_final[is.na(score_iogc), `:=`(score_iogc = 0, liste_variants = "")]
+  setcolorder(score_final, c("FID", "IID", "score_iogc", "liste_variants"))
 
-  col_raw <- paste0("IOGC_raw_", nom_condition)
-  col_adj <- paste0("IOGC_adj_", nom_condition)
+  return(score_final)
 
-  # --Fusion
-  scores_iogc <- scores_iogc %>% 
-    left_join(iogc_brut, by = c("IID" = "individu_outlier")) %>% 
-    mutate(
-      !!col_raw := coalesce(!!sym(col_raw), 0L), 
-      !!col_adj := as.vector(scale(!!sym(col_raw)))
-    ) 
 }
 
-# -----------
-# Sauvegarde
-# -----------
 
-write_csv(scores_iogc, "/home/chloev/links/projects/def-bureau/chloev/scores_iogc.csv")
+# -----------------------------------
+# Boucle pour toutes les combinaisons
+# -----------------------------------
+
+for (fenetre in fenetres) {
+  for(version_z in versions_z) {
+
+    scores_finaux <- calculer_score_iogc(fenetre, version_z, df_cohorte)
+
+    if(!is.null(scores_finaux)) {
+      out_file <- file.path(out_dir, sprintf("score_iogc_%s_%s.txt", fenetre, version_z))
+      fwrite(scores_finaux, out_file, sep = "\t", quote = FALSE)
+    }
+  }
+}
