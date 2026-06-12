@@ -4,7 +4,6 @@
 #
 # Entrées :
 #  - Paires variant-sonde -- variants_dans_regions_<fenetre>.bed
-#  - 
 #  - Fréquences alléliques (pour annotation) -- freq_variants_<fenetre>.frq
 #  - Matrice de scores Z -- Z_<version>.txt
 #
@@ -70,8 +69,12 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   cols_z <- c(zscores_entete[1], intersect(zscores_entete, individus_cibles))
   zscores <- fread(zscore_file, select = cols_z)
   setnames(zscores, 1, "probe_id")
-  zscores <- zscores[probe_id %in% genes_cibles]
-  
+
+  sondes_avec_z <- unique(zscores[["probe_id"]])
+  work_sans_z <- work_initial[!probe_id %in% sondes_avec_z]
+  work_initial <- work_initial[probe_id %in% sondes_avec_z]
+
+  zscores <- zscores[probe_id %in% unique(work_initial[["probe_id"]])]
   z_long <- melt(zscores, id.vars = "probe_id", variable.name = "IID", value.name = "Z")
 
   rm(zscores)
@@ -83,17 +86,15 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
 
   # --Table de travail
   # Porteurs x scores Z pour la sonde associée à chaque variant
-  #z_long <- unique(z_long, by = c("probe_id", "IID"))
-  #work_initial[, probe_id := as.character(probe_id)]
-  #z_long[, probe_id := as.character(probe_id)]
-
   work_initial[, probe_id := as.character(probe_id)]
-  z_long[, probe_id := as.character(probe_id)]
+  work_initial[, IID := as.character(IID)]
 
   setkey(work_initial, probe_id, IID)
   z_sub <- z_long[, .(probe_id, IID, Z, is_outlier, direction)]
   setkey(z_sub, probe_id, IID)
-  work <- z_sub[work_initial, allow.cartesian = TRUE]
+  work <- z_sub[work_initial, on = .(probe_id, IID)]
+  work[is.na(is_outlier), `:=`(is_outlier = FALSE, direction = "none", Z = NA)]
+
   rm(work_initial, z_long, z_sub)
   gc()
 
@@ -105,42 +106,45 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
 
   # --Critère de direction cohérente
   # Tous les porteurs outliers dévient dans le même sens
-  critere_dir <- critere_pres[directions %in% c("UP", "DOWN")]
-  rm(critere_pres)
+  dir_coherente <- work[is_outlier == TRUE, .(dir_sonde = if(all(direction == "UP")) "UP" else if (all(direction == "DOWN")) "DOWN" else "MIXED"), by = .(variant_id, probe_id)]
+
+  critere_dir <- merge(critere_pres, dir_coherente, by = c("variant_id", "probe_id"))
+  critere_dir <- critere_dir[dir_sonde %in% c("UP", "DOWN")]
+  rm(critere_pres, dir_coherente)
 
   # --Collecte des ID et scores Z des individus outliers porteurs 
   work[, combo_key := paste(variant_id, probe_id)]
   critere_dir[, combo_key := paste(variant_id, probe_id)]
 
   cles_valides <- critere_dir$combo_key
-  work_sub <- work[is_outlier == TRUE& combo_key %in% cles_valides]
+  work_sub <- work[is_outlier == TRUE & combo_key %in% cles_valides]
   rm(work)
   gc()
 
   outliers_porteurs <- work_sub[, .(variant_id, probe_id, IID, Z = round(Z, 3))]
 
   # --Chargement des fréquences alléliques pour annotation du tableau final
-  # Les  contiennent déjà uniquement des variants rares; aucun filtre sur ALT_FREQ n'est appliqué
+  # Les  contiennent déjà uniquement des variants rares; aucun filtre n'est appliqué
   # Harmonisation des noms de colonnes
   freq <- fread(file.path(data_dir, sprintf("freq_variants_%s.frq", fenetre)))
-  setnames(freq, old = c("SNP", "A1", "A2", "MAF"), new = c("variant_id", "REF", "ALT", "ALT_FREQ"), skip_absent= TRUE)
-  dt_freq <- freq[, .(variant_id, REF, ALT, ALT_FREQ)]
+  setnames(freq, old = c("SNP", "A1", "A2", "MAF_A", "MAF_U"), new = c("variant_id", "REF", "ALT", "MAF_Atteints", "MAF_Non_atteints"), skip_absent= TRUE)
+  dt_freq <- freq[, .(variant_id, REF, ALT, MAF_Atteints, MAF_Non_atteints)]
   rm(freq)
 
   # --Construction du tableau des variants candidats
-  candidats <- merge(critere_dir, outliers_porteurs, by = c("variant_id", "probe_id"))
+  candidats <- merge(critere_dir[, .(variant_id, probe_id, symbol, directions, n_outliers, n_non_outliers)], outliers_porteurs, by = c("variant_id", "probe_id"), allow.cartesian = TRUE)
   candidats <- merge(candidats, dt_freq, by = "variant_id", all.x = TRUE, )
 
   # --Filtrage pour les variants rares finaux dans candidats
-  fichiers_map <- list.files(filtre_dir, pattern = ".*_%s_chr.*\\.map$", full.names = TRUE)
+  fichiers_map <- list.files(filtre_dir, pattern = ".*_chr.*\\.map$", full.names = TRUE)
   variants_rares_finaux <- unique(rbindlist(lapply(fichiers_map, fread, header = FALSE, select = 2))$V2)
   candidats <- candidats[variant_id %in% variants_rares_finaux]
 
   # --Construction du tableau final des variants candidats finaux
   setnames(candidats, "directions", "direction_expression")
-  setorder(candidats, symbol, probe_id, variant_id)
+  setorder(candidats, symbol, probe_id, variant_id, IID)
 
-  return(candidats[, .(variant_id, probe_id, symbol, direction_expression, n_outliers_porteurs = n_outliers, individu_outlier = IID, Z_outlier = Z, REF, ALT, ALT_FREQ)])
+  return(candidats[, .(variant_id, probe_id, symbol, direction_expression, n_outliers_porteurs = n_outliers, individu_outlier = IID, Z_outlier = Z, REF, ALT, MAF_Atteints, MAF_Non_atteints)])
 
 }
 
