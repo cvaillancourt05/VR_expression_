@@ -10,7 +10,6 @@
 #  - Scores bruts selon les différentes conditions
 # -------------------------------------------------------------------------------------------
 
-library(tidyverse)
 library(data.table)
 
 # -----------
@@ -19,7 +18,7 @@ library(data.table)
 
 fenetres <- c("10kb", "50kb")
 data_dir <- "/home/chloev/links/projects/def-bureau/expression_genes/resultats/variants_rares_associes_aux_outliers/"
-out_dir <- "/home/chloev/links/projects/def-bureau/chloev/"
+out_dir <- "/home/chloev/links/projects/def-bureau/chloev/scores"
 
 #-- Versions des scores Z à traiter
 versions_z <- c("avec_eQTL_atteints", "avec_eQTL_non_atteints", "sans_eQTL_atteints", "sans_eQTL_non_atteints")
@@ -28,11 +27,12 @@ versions_z <- c("avec_eQTL_atteints", "avec_eQTL_non_atteints", "sans_eQTL_attei
 # Chargement des données
 # ----------------------
 
-df_cohorte <- read_table("/home/chloev/links/projects/def-bureau/chloev/phenotypes.txt", n_max = 0, show_col_types = FALSE) # --Pour avoir FID et IID
-df_cohorte <- data.frame(FID_IID = colnames(df_cohorte)[-1], stringsAsFactors = FALSE) %>%
-  separate_wider_delim(FID_IID, delim = "_", names = c("FID", "IID")) %>%
-  mutate(FID = as.character(FID), IID = as.character(IID))
-
+entete <- colnames(fread("/home/chloev/links/projects/def-bureau/chloev/phenotypes.txt", nrows = 0)) # --Pour avoir FID et IID
+df_cohorte <- data.table(FID_IID = entete[-1])
+df_cohorte[, c("FID", "IID") := tstrsplit(FID_IID, "_", fixed = TRUE)]
+df_cohorte[, FID_IID := NULL]
+df_cohorte[, `:=`(FID = as.character(FID), IID = as.character(IID))]
+  
 # ----------------------------------------
 # Fonction pour le calcul des scores IOGC
 # ----------------------------------------
@@ -50,13 +50,12 @@ calculer_score_iogc <- function(fenetre, version_z, cohorte) {
   candidats_unique <- unique(candidats, by = c("IID", "symbol"))
 
   # --Calcul
-  scores_candidats <- candidats_unique[, .(score_iogc = .N, liste_variants = paste(unique(variant_id), collapse = ";")), by = .(IID)]
+  scores_candidats <- candidats_unique[, .(score_iogc = .N), by = .(IID)]
 
   # --Inclusion de toute la cohorte
-  df_score_final <- right_join(scores_candidats, cohorte, by = "IID")
-  score_final <- as.data.table(df_score_final)
-  score_final[is.na(score_iogc), `:=`(score_iogc = 0, liste_variants = "")]
-  setcolorder(score_final, c("FID", "IID", "score_iogc", "liste_variants"))
+  score_final <- merge(scores_candidats, cohorte, by = "IID", all.y = TRUE)
+  score_final[is.na(score_iogc), score_iogc := 0]
+  setcolorder(score_final, c("FID", "IID", "score_iogc"))
 
   return(score_final)
 
