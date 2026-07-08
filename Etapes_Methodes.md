@@ -84,7 +84,7 @@ Fenêtre 2 (Chagnon) : +/- 50kb autour du gène (capture plus de variants, augme
 - Intersecter avec les variants rares pour obtenir une liste des variants candidats (extrait identité des variants + gène associé)
 
   bedtools intersect -> liste des variants dans les régions à l'intérieur des fenêtres cis
-  Gén.ration d'une table de paires variant-sonde uniques
+  Génération d'une table de paires variant-sonde uniques
 
 - Extraire les génotypes des variants pour tous individus avec plink ou bcftools (matrice individus x variants avec génotypes codés 0/1/2)
 
@@ -143,7 +143,7 @@ Version simplifiée de Mazzarotto -- comptage brut sans pondération par la dire
 
 Modèle de régression logistique à effets mixtes pour chaque phénotype :
 
-      phénotype ~ IOGC + âge + sexe + PC1..PCk_génotype + (1 / kinship)
+      phénotype ~ IOGC + âge + sexe + PC1..PCk_génotype + (1 / kinship) --diff facon de calculer le kinship (chaque famille est un cluster) (sinon -- ) ---aussi cherche le genotype  des sujets sans expression cest pertinent
 
 - phénotype : variable binaire, donc testé séparément
     SZ vs NAR; BD vs NAR; CL vs NAR
