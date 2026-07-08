@@ -42,38 +42,29 @@ Les individus avec un nombre de sondes dépassant le seuil adaptif **Q3 + 1.5 * 
 ## 2. Identification des variants rares associés aux outliers
 ### 2.1 Définition des régions autour des gènes
 Obtention des coordonnées des sondes
-
-    - Pour chaque sonde, définir les bornes du gènes correspondant
+  - Pour chaque sonde, définir les bornes du gènes correspondant
 
 Définition de la fenêtre
-
-    - ±10 kb
-
-    - ±50 kb
+  - ±10 kb
+  - ±50 kb
 
 Génération d'un fichier avec les variants rares "candidats"
-
-    - Intersection avec les variants rares
+  - Intersection avec les variants rares
 ### 2.2 Filtrage des variants dits "candidats" associés aux outliers
 Traitement des données
-
-    - Nettoyage et exclusion des symboles manquants
+  - Nettoyage et exclusion des symboles manquants
 
 Critère de présence
-
-    - Retenir uniquement les variants portés par au moins un individu identifié comme outlier
+  - Retenir uniquement les variants portés par au moins un individu identifié comme outlier
 
 Critère de direction cohérente
-
-    - Tous les individus ayant le même variant doivent présenter l'expression dans le même sens
+  - Tous les individus ayant le même variant doivent présenter l'expression dans le même sens
 
 ## 3. Calcul du burden de variants rares
 ### 3.1 Calcul du score IOGC par individu
 Score IOGC = nombre de gènes distincts pour lesquelles un individu porte au moins un variant
-
-    - Plusieurs variants dans le même gène compte pour 1
-
-    - Le score n'est pas lié au phénotype
+  - Plusieurs variants dans le même gène compte pour 1
+  - Le score n'est pas lié au phénotype
 ### 3.2 Régression logistique selon le statut
         𝑝ℎé𝑛𝑜𝑡𝑦𝑝𝑒 ~ 𝐼𝑂𝐺𝐶 + â𝑔𝑒 + 𝑠𝑒𝑥𝑒 + 𝑃𝐶1 + … + 𝑃𝐶𝑘
 
