@@ -16,7 +16,9 @@ library(dplyr)
 library(readr)
 library(tidyr)
 library(geepack)
-library(purrr)
+library(readxl)
+library(data.table)
+
 
 dir_scores <- "results/scores_iogc"
 dir_sortie <- "results/asso_pheno"
@@ -36,10 +38,10 @@ dichotomiser_p90 <- function(data, score_col) {
 # --------------------------------------------------------------------
 fonction_glm <- function(data, pheno, score_col) {
   model_data <- data %>% 
-    drop_na(all_of(c(pheno, score_col))) %>% 
+    drop_na(all_of(c(pheno, score_col, "Sexe"))) %>% 
     dichotomiser_p90(score_col)
   
-  model <- glm(as.formula(paste0(pheno, " ~ groupe_iogc")), data = model_data, family = binomial(link = "logit"))
+  model <- glm(as.formula(paste0(pheno, " ~ groupe_iogc + Sexe")), data = model_data, family = binomial(link = "logit"))
   summaryModel <- summary(model)
   coef_df <- as.data.frame(summaryModel$coefficients)
   
@@ -62,11 +64,11 @@ fonction_glm <- function(data, pheno, score_col) {
 # --------------------------------------------------------------------
 fonction_gee <- function(data, pheno, score_col) {
   model_data <- data %>% 
-    drop_na(all_of(c(pheno, "FID", score_col))) %>% 
+    drop_na(all_of(c(pheno, "FID", score_col, "Sexe"))) %>% 
     dichotomiser_p90(score_col) %>% 
     arrange(FID)
   
-  model <- geeglm(as.formula(paste0(pheno, " ~ groupe_iogc")), data = model_data, id = factor(FID), 
+  model <- geeglm(as.formula(paste0(pheno, " ~ groupe_iogc + Sexe")), data = model_data, id = factor(FID), 
                   family = binomial(link = "logit"), corstr = "independence")
   summaryModel <- summary(model)
   coef_df <- as.data.frame(summaryModel$coefficients)
@@ -88,7 +90,6 @@ fonction_gee <- function(data, pheno, score_col) {
   )
 }
 
-
 # --------------------------------------------------------------------
 # Chargement et Standardisation des fichiers phénotypes
 # --------------------------------------------------------------------
@@ -104,14 +105,21 @@ pheno_bp <- read_table("data/BPbroad_plink.txt", show_col_types = FALSE, col_nam
   mutate(FID = as.character(X1), IID = as.character(X2), Pheno_BP = if_else(X3 %in% c(1, 2), X3 - 1, NA_real_)) %>%
   select(FID, IID, Pheno_BP)
 
-pheno_all <- list(pheno_global, pheno_sz, pheno_bp) %>% 
-  reduce(full_join, by = c("FID", "IID"))
+pheno_all <- pheno_global %>%
+  full_join(pheno_sz, by = c("FID", "IID")) %>%
+  full_join(pheno_bp, by = c("FID", "IID"))
+
+covar_sexe <- as.data.table(read_excel("data/attributs_sujets.xlsx")) %>%
+  mutate(IID = as.character(subid), Sexe = as.factor(sexe.x)) %>%
+  select(IID, Sexe)
+pheno_all <- pheno_all %>% left_join(covar_sexe, by = "IID")
 
 phenotypes <- c("Pheno_Global", "Pheno_SZ", "Pheno_BP")
 
 # --------------------------------------------------------------------
-# Boucle principale d'analyse pour chaque condition génomique
+# Boucle principale d'analyse pour chaque condition
 # --------------------------------------------------------------------
+
 fichiers_scores <- list.files(dir_scores, pattern = "^score_iogc.*_atteints.*\\.txt$", full.names = TRUE)
 resultats <- list()
 
@@ -145,5 +153,5 @@ for (f_path in fichiers_scores) {
 if (length(resultats) > 0) {
   resultats_finaux <- bind_rows(resultats) %>%
   select(Condition, Method, Phenotype, OR, P_Value, CI_Lower, CI_Upper, N_cas, N_total)
-  write_csv(resultats_finaux, file.path(dir_sortie, "associations_p90.csv"))
+  write_csv(resultats_finaux, file.path(dir_sortie, "associations_p90_covar_sexe.csv"))
 }
