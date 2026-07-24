@@ -2,7 +2,6 @@
 # Association_phenotypique_p90.R
 # Adaptation de la méthodologie de Mazzarotto et al. 2025 à la cohorte Chagnon
 # Analyse du fardeau de variants rares IOGC dichotomisé au 90e percentile (P90 vs reste)
-# Pas de PRS ni de prévalence populationnelle (K) : métriques basées sur l'échelle observée.
 #
 # Entrées :
 #  - results/scores_iogc/score_iogc_*_atteints*.txt
