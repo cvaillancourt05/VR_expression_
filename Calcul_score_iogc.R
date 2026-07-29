@@ -17,11 +17,14 @@ library(data.table)
 # -----------
 
 fenetres <- c("10kb", "50kb")
-data_dir <- "/home/chloev/links/projects/def-bureau/expression_genes/resultats/variants_rares_associes_aux_outliers/"
+data_dir <- "/home/chloev/links/projects/def-bureau/chloev/liste_variants/resultats"
 out_dir <- "/home/chloev/links/projects/def-bureau/chloev/scores"
 
-#-- Versions des scores Z à traiter
+# --Versions des scores Z à traiter
 versions_z <- c("avec_eQTL_atteints", "avec_eQTL_non_atteints", "sans_eQTL_atteints", "sans_eQTL_non_atteints")
+
+# --Fichier de phénotype (pour distinguer atteints/non-atteints)
+fichier_pheno_global <- "/home/chloev/links/projects/def-bureau/chloev/GCbroad_plink.txt"
 
 # ----------------------
 # Chargement des données
@@ -32,6 +35,11 @@ df_cohorte <- data.table(FID_IID = entete[-1])
 df_cohorte[, c("FID", "IID") := tstrsplit(FID_IID, "_", fixed = TRUE)]
 df_cohorte[, FID_IID := NULL]
 df_cohorte[, `:=`(FID = as.character(FID), IID = as.character(IID))]
+
+# --Phénotype global : 0=inconnu, 1=non-atteint, 2=atteint
+pheno_global <- fread(fichier_pheno_global, header = FALSE, col.names = c("FID", "IID", "Pheno"))
+pheno_global[, IID := as.character(IID)]
+iid_non_atteints <- pheno_global[Pheno == 1, IID]
   
 # ----------------------------------------
 # Fonction pour le calcul des scores IOGC
@@ -45,6 +53,20 @@ calculer_score_iogc <- function(fenetre, version_z, cohorte) {
   candidats <- fread(input_file, select = c("variant_id", "probe_id", "symbol", "individu_outlier"))
   setnames(candidats, "individu_outlier", "IID")
   candidats[, IID := as.character(IID)]
+
+  # --Ajout des données non-atteints (ref. n-atteints) pour les atteints (ref. atteints)
+  est_ref_atteints <- grepl("atteints$", version_z) & !grepl("non_atteints", version_z)
+  if(est_ref_atteints) {
+    version_z_non_atteints <- sub("_atteints$", "_non_atteints", version_z)
+    input_file_non_atteints <- file.path(data_dir, sprintf("variants_candidats_%s_%s.txt", fenetre, version_z_non_atteints))
+
+    candidats_non_atteints <- fread(input_file_non_atteints, select = c("variant_id", "probe_id", "symbol", "individu_outlier"))
+    setnames(candidats_non_atteints, "individu_outlier", "IID")
+    candidats_non_atteints[, IID := as.character(IID)]
+    candidats_non_atteints <- candidats_non_atteints[IID %in% iid_non_atteints]
+
+    candidats <- rbind(candidats, candidats_non_atteints)
+  }
 
   # --Déduplication
   candidats_unique <- unique(candidats, by = c("IID", "symbol"))
