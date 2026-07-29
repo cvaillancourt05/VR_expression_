@@ -54,6 +54,9 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   geno_porteurs[, IID := as.character(IID)]
   geno_porteurs[, variant_id := as.character(variant_id)]
   
+  # --Exclusion de l'individu aberrant
+  geno_porteurs <- geno_porteurs[IID != "541"]
+
   # --On garde que les porteurs de variants dans une région cis
   ids_valides <- regions_dt[["variant_id"]]
   geno_porteurs <- geno_porteurs[variant_id %in% ids_valides]
@@ -155,9 +158,10 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   # -----
   # Les fichiers .frq contiennent déjà uniquement des variants rares; aucun filtre n'est appliqué
   freq <- fread(file.path(data_dir, sprintf("freq_variants_%s.frq", fenetre)))
-  setnames(freq, old = c("SNP", "A1", "A2", "MAF_A", "MAF_U"), 
-            new = c("variant_id", "REF", "ALT", "MAF_Atteints", "MAF_Non_atteints"), skip_absent= TRUE)
-  dt_freq <- freq[, .(variant_id, REF, ALT, MAF_Atteints, MAF_Non_atteints)]
+  setnames(freq, old = c("SNP", "MAF_A", "MAF_U"), 
+            new = c("variant_id", "MAF_Atteints", "MAF_Non_atteints"), skip_absent= TRUE)
+
+  dt_freq <- freq[, .(variant_id, MAF_Atteints, MAF_Non_atteints)]
   rm(freq)
 
   # -----
@@ -180,7 +184,7 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
                         n_outliers_porteurs = n_outliers, 
                         individu_outlier = IID, 
                         Z_outlier = Z, 
-                        REF, ALT, MAF_Atteints, MAF_Non_atteints)])
+                        MAF_Atteints, MAF_Non_atteints)])
 
 }
 

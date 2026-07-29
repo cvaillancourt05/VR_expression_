@@ -18,7 +18,7 @@ fonction_gam_lissage <- function(data, pheno, score_col, titre) {
   model_data <- data[!is.na(data[[pheno]]) & !is.na(data[[score_col]]), ]
 
   form_gam <- as.formula(paste0(pheno, " ~ s(", score_col, ", k = 10)"))
-  m <- gam(form_gam, data = model_data, family = binomial(link = "logit"), method = "REML")
+  m <- gam(form_gam, data = model_data, family = binomial(link = "logit"), method = "ML")
 
   s <- summary(m)
   pv <- s$s.table[1, "p-value"]

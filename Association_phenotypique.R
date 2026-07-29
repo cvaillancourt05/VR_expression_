@@ -1,6 +1,5 @@
 # --------------------------------------------------------------------------------------------
-# Association_phenotypique_p90.R
-# Adaptation de la méthodologie de Mazzarotto et al. 2025 à la cohorte Chagnon
+# Association_phenotypique.R
 # Analyse du fardeau de variants rares IOGC dichotomisé au 90e percentile (P90 vs reste)
 #
 # Entrées :
@@ -20,9 +19,9 @@ library(purrr)
 dir_scores <- "results/scores_iogc"
 dir_sortie <- "results/asso_pheno"
 
-# --------------------------------------------------------------------
+# -------------------------------------------------
 # Dichotomisation du score au 90e percentile (P90)
-# --------------------------------------------------------------------
+# -------------------------------------------------
 dichotomiser_p90 <- function(data, score_col) {
   seuil <- quantile(data[[score_col]], 0.90, na.rm = TRUE)
   data$groupe_iogc <- factor(ifelse(data[[score_col]] > seuil, "haut", "bas"), levels = c("bas", "haut"))
@@ -30,9 +29,9 @@ dichotomiser_p90 <- function(data, score_col) {
   data
 }
 
-# --------------------------------------------------------------------
+# -------------------------------------------------
 # Fonction de régression logistique standard (GLM)
-# --------------------------------------------------------------------
+# -------------------------------------------------
 fonction_glm <- function(data, pheno, score_col) {
   model_data <- data %>% 
     drop_na(all_of(c(pheno, score_col))) %>% 
@@ -59,6 +58,7 @@ fonction_glm <- function(data, pheno, score_col) {
 # --------------------------------------------------------------------
 # Fonction des équations d'estimation généralisées (GEE) - Structure familiale
 # --------------------------------------------------------------------
+
 fonction_gee <- function(data, pheno, score_col) {
   model_data <- data %>% 
     drop_na(all_of(c(pheno, "FID", score_col))) %>% 
@@ -87,10 +87,10 @@ fonction_gee <- function(data, pheno, score_col) {
   )
 }
 
+# ------------------------------------------------------
+# Chargement et standardisation des fichiers phénotypes
+# ------------------------------------------------------
 
-# --------------------------------------------------------------------
-# Chargement et Standardisation des fichiers phénotypes
-# --------------------------------------------------------------------
 pheno_global <- read_table("data/GCbroad_plink.txt", show_col_types = FALSE, col_names = FALSE) %>%
   mutate(FID = as.character(X1), IID = as.character(X2), Pheno_Global = if_else(X3 %in% c(1, 2), X3 - 1, NA_real_)) %>%
   select(FID, IID, Pheno_Global)
@@ -108,9 +108,10 @@ pheno_all <- list(pheno_global, pheno_sz, pheno_bp) %>%
 
 phenotypes <- c("Pheno_Global", "Pheno_SZ", "Pheno_BP")
 
-# --------------------------------------------------------------------
-# Boucle principale d'analyse pour chaque condition génomique
-# --------------------------------------------------------------------
+# ---------------------------------------------------
+# Boucle principale d'analyse pour chaque condition 
+# ---------------------------------------------------
+
 fichiers_scores <- list.files(dir_scores, pattern = "^score_iogc.*_atteints.*\\.txt$", full.names = TRUE)
 resultats <- list()
 
@@ -137,9 +138,9 @@ for (f_path in fichiers_scores) {
   }
 }
 
-# --------------------------------------------------------------------
+# -------------------------
 # Sauvegarde des résultats
-# --------------------------------------------------------------------
+# -------------------------
 
 if (length(resultats) > 0) {
   resultats_finaux <- bind_rows(resultats) %>%
