@@ -9,6 +9,7 @@
 #
 # Sortie :
 #  - Liste des variants candidats par fenetre -- variants_candidats_<fenetre>_<version_z>.txt
+#  - Stats + liste des paires exclues (presence non exclusive, direction mixed) -- variants_exclus_<fenetre>_<version_z>.txt
 # --------------------------------------------------------------------------------------------
 
 library(data.table)
@@ -20,7 +21,8 @@ library(data.table)
 fenetres <- c("10kb", "50kb")
 seuil_z <- 2
 
-data_dir <- "/home/chloev/links/projects/def-bureau/chloev/liste_variants/sorties/merge"
+data_dir <- "/lustre09/project/6000443/expression_genes/resultats/variants_rares_associes_aux_outliers"
+porteurs_dir <- "/lustre09/project/6000443/expression_genes/resultats/variants_rares_associes_aux_outliers/porteurs"
 filtre_dir <- "/lustre09/project/6033529/schizo/data/WGS_bs_2022/500_samples_cag_without_mask/RetroFunRVS"
 scores_z <- c("avec_eQTL_atteints" = "/home/chloev/links/projects/def-bureau/expression_genes/resultats/Zscores/Z_avec_eQTL_ref_atteints.txt", 
             "avec_eQTL_non_atteints" = "/home/chloev/links/projects/def-bureau/expression_genes/resultats/Zscores/Z_avec_eQTL_ref_non_atteints.txt",
@@ -33,19 +35,22 @@ scores_z <- c("avec_eQTL_atteints" = "/home/chloev/links/projects/def-bureau/exp
 
 filtrer_variants <- function(fenetre, version_z, zscore_file) {
 
-  # -----
+  # --Liste des paires variant-sonde exclues par critere
+  exclusions <- list()
+
+  # ---------------------------
   # Associations variant-sonde
-  # -----
+  # ---------------------------
   regions_dt <- fread(file.path(data_dir, sprintf("variants_dans_regions_%s.bed", fenetre)), header = FALSE, col.names = c("variant_id", "probe_gene"))
   regions_dt[, c("probe_id", "symbol") := tstrsplit(probe_gene, "__", fixed = TRUE)]
   regions_dt[, probe_gene := NULL]
 
   variants_intersect <- unique(regions_dt$variant_id) # --Liste de tous les variants dans les régions cis
 
-  # -----
+  # -------------------------------------
   # Chargement des génotypes des porteurs
-  # -----
-  tsv_files <- list.files(data_dir, pattern = sprintf("porteurs_%s_chr.*\\.tsv$", fenetre), full.names = TRUE)
+  # -------------------------------------
+  tsv_files <- list.files(porteurs_dir, pattern = sprintf("porteurs_%s_chr.*\\.tsv$", fenetre), full.names = TRUE)
   
   # --Concaténation de tous les chromosomes en une seule table
   geno_porteurs <- rbindlist(lapply(tsv_files, fread, header = FALSE, sep = "\t", col.names = c("IID", "variant_id", "genotype")))
@@ -62,9 +67,9 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   geno_porteurs <- geno_porteurs[variant_id %in% ids_valides]
   gc()
 
-  # -----
+  # ----------------------------------
   # Jointure variant-sondes x porteurs
-  # -----
+  # ----------------------------------
   setkey(regions_dt, variant_id)
   setkey(geno_porteurs, variant_id)
   work_initial <- merge(regions_dt, geno_porteurs, by = "variant_id", allow.cartesian = TRUE)
@@ -75,9 +80,9 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   genes_cibles <- unique(work_initial[["probe_id"]])
   individus_cibles <- unique(work_initial[["IID"]])
 
-  # -----
+  # ------------------------------------
   # Chargement et filtrage des scores Z
-  # -----
+  # ------------------------------------
   zscores_entete <- colnames(fread(zscore_file, nrows = 1))
   cols_z <- c(zscores_entete[1], intersect(zscores_entete, individus_cibles))
   zscores <- fread(zscore_file, select = cols_z)
@@ -98,9 +103,9 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   z_long[, is_outlier := abs(Z) >= seuil_z]
   z_long[, direction := fifelse(Z >= seuil_z, "UP", fifelse(Z <= -seuil_z, "DOWN", "none"))]
 
-  # -----
+  # -----------------------------
   # Jointure porteurs x scores Z
-  # -----
+  # -----------------------------
   work_initial[, probe_id := as.character(probe_id)]
   work_initial[, IID := as.character(IID)]
 
@@ -116,9 +121,9 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   rm(work_initial, z_long, z_sub)
   gc()
 
-  # -----
+  # ------------------------------------------------
   # Critère de présence exclusive chez les outliers
-  # -----
+  # ------------------------------------------------
   # Variant porté par >= 1 outlier et par aucun non-outlier pour la même sonde
   resume <- work[!is.na(is_outlier), .(n_outliers = sum(is_outlier), 
     n_non_outliers = sum(!is_outlier), directions = paste(unique(direction[is_outlier]), 
@@ -127,22 +132,25 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   critere_pres <- resume[n_outliers >= 1 & n_non_outliers == 0]
   rm(resume)
 
-  # -----
+  # -----------------------------------------------
   # Critère de direction cohérente de la déviation
-  # -----
+  # -----------------------------------------------
   # Tous les porteurs outliers dévient dans le même sens
   dir_coherente <- work[is_outlier == TRUE, 
     .(dir_sonde = if(all(direction == "UP")) "UP" 
     else if (all(direction == "DOWN")) "DOWN" else "MIXED"), 
     by = .(variant_id, probe_id)]
 
-  critere_dir <- merge(critere_pres, dir_coherente, by = c("variant_id", "probe_id"))
-  critere_dir <- critere_dir[dir_sonde %in% c("UP", "DOWN")] # --On exclut MIXED
-  rm(critere_pres, dir_coherente)
+  critere_dir_tout <- merge(critere_pres, dir_coherente, by = c("variant_id", "probe_id"))
+  critere_dir <- critere_dir_tout[dir_sonde %in% c("UP", "DOWN")] # --On exclut MIXED
 
-  # -----
+  # --Variants exclus : direction de déviation non cohérente
+  exclusions[["direction_mixed"]] <- critere_dir_tout[dir_sonde == "MIXED", .(variant_id, probe_id, symbol)]
+  rm(critere_pres, dir_coherente, critere_dir_tout)
+
+  # ------------------------------------------------------------
   # Collecte des ID et scores Z des individus outliers porteurs 
-  # -----
+  # ------------------------------------------------------------
   work[, combo_key := paste(variant_id, probe_id)]
   critere_dir[, combo_key := paste(variant_id, probe_id)]
 
@@ -153,9 +161,9 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
 
   outliers_porteurs <- work_sub[, .(variant_id, probe_id, IID, Z = round(Z, 3))]
 
-  # -----
+  # ------------------------------------------
   # Annotation avec les fréquences alléliques
-  # -----
+  # ------------------------------------------
   # Les fichiers .frq contiennent déjà uniquement des variants rares; aucun filtre n'est appliqué
   freq <- fread(file.path(data_dir, sprintf("freq_variants_%s.frq", fenetre)))
   setnames(freq, old = c("SNP", "MAF_A", "MAF_U"), 
@@ -164,9 +172,9 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   dt_freq <- freq[, .(variant_id, MAF_Atteints, MAF_Non_atteints)]
   rm(freq)
 
-  # -----
+  # -----------------------------------------------
   # Construction du tableau des variants candidats
-  # -----
+  # -----------------------------------------------
   candidats <- merge(critere_dir[, .(variant_id, probe_id, symbol, directions, n_outliers, n_non_outliers)], 
                 outliers_porteurs, by = c("variant_id", "probe_id"), allow.cartesian = TRUE)
   candidats <- merge(candidats, dt_freq, by = "variant_id", all.x = TRUE, )
@@ -180,11 +188,26 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   setnames(candidats, "directions", "direction_expression")
   setorder(candidats, symbol, probe_id, variant_id, IID)
 
-  return(candidats[, .(variant_id, probe_id, symbol, direction_expression, 
+  # ------------------------------------------
+  # Assemblage des exclusions (liste + stats)
+  # ------------------------------------------
+  exclusions_liste <- rbindlist(mapply(function(dt, critere) {
+    if (nrow(dt) == 0) return(NULL)
+    dt <- unique(dt[, .(variant_id, probe_id, symbol)])
+    dt[, critere := critere]
+    dt
+  }, exclusions, names(exclusions), SIMPLIFY = FALSE))
+
+  exclusions_stats <- exclusions_liste[, .(n_paires_exclues = .N, 
+                                            n_variants_exclus = uniqueN(variant_id)), by = critere]
+
+  return(list(candidats = candidats[, .(variant_id, probe_id, symbol, direction_expression, 
                         n_outliers_porteurs = n_outliers, 
                         individu_outlier = IID, 
                         Z_outlier = Z, 
-                        MAF_Atteints, MAF_Non_atteints)])
+                        MAF_Atteints, MAF_Non_atteints)],
+              exclusions_liste = exclusions_liste,
+              exclusions_stats = exclusions_stats))
 
 }
 
@@ -195,11 +218,17 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
 for (fenetre in fenetres) {
   for (version_z in names(scores_z)) {
     
-    data_out <- "/home/chloev/links/projects/def-bureau/chloev/liste_variants/resultats"
+    data_out <- "/lustre09/project/6000443/expression_genes/resultats/variants_rares_associes_aux_outliers"
     out_file <- file.path(data_out, sprintf("variants_candidats_%s_%s.txt", fenetre, version_z))
+    exclus_file <- file.path(data_out, sprintf("variants_exclus_%s_%s.txt", fenetre, version_z))
     resultat <- filtrer_variants(fenetre, version_z, scores_z[[version_z]])
     
-    fwrite(resultat, out_file, sep = "\t", quote = FALSE)
+    fwrite(resultat$candidats, out_file, sep = "\t", quote = FALSE)
+
+    # --Fichier des variants exclus
+    fwrite(resultat$exclusions_stats, exclus_file, sep = "\t", quote = FALSE)
+    cat("\n", file = exclus_file, append = TRUE)
+    fwrite(resultat$exclusions_liste, exclus_file, sep = "\t", quote = FALSE, append = TRUE)
 
     rm(resultat)
     gc()
