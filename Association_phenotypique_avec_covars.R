@@ -17,9 +17,8 @@ library(geepack)
 library(readxl)
 library(data.table)
 
-
-dir_scores <- "results/scores_iogc"
-dir_sortie <- "results/asso_pheno"
+dir_scores <- "/lustre09/project/6000443/expression_genes/resultats/scores_iog"
+dir_sortie <- "/lustre09/project/6000443/expression_genes/resultats/association_pheno"
 
 # --------------------------------------------------------------------
 # Dichotomisation du score au 90e percentile (P90)
@@ -91,15 +90,15 @@ fonction_gee <- function(data, pheno, score_col) {
 # --------------------------------------------------------------------
 # Chargement et Standardisation des fichiers phénotypes
 # --------------------------------------------------------------------
-pheno_global <- read_table("data/GCbroad_plink.txt", show_col_types = FALSE, col_names = FALSE) %>%
+pheno_global <- read_table("/lustre09/project/6033529/schizo/data/WGS_bs_2022/500_samples_cag/RetroFunRVS/objets_ped/GCbroad_plink.txt", show_col_types = FALSE, col_names = FALSE) %>%
   mutate(FID = as.character(X1), IID = as.character(X2), Pheno_Global = if_else(X3 %in% c(1, 2), X3 - 1, NA_real_)) %>%
   select(FID, IID, Pheno_Global)
 
-pheno_sz <- read_table("data/SZbroad_plink.txt", show_col_types = FALSE, col_names = FALSE) %>%
+pheno_sz <- read_table("/lustre09/project/6033529/schizo/data_AB/WGS_bs_2022/freq_RV/SZbroad_plink.txt", show_col_types = FALSE, col_names = FALSE) %>%
   mutate(FID = as.character(X1), IID = as.character(X2), Pheno_SZ = if_else(X3 %in% c(1, 2), X3 - 1, NA_real_)) %>%
   select(FID, IID, Pheno_SZ)
 
-pheno_bp <- read_table("data/BPbroad_plink.txt", show_col_types = FALSE, col_names = FALSE) %>%
+pheno_bp <- read_table("/lustre09/project/6033529/schizo/data_AB/WGS_bs_2022/freq_RV/BPbroad_plink.txt", show_col_types = FALSE, col_names = FALSE) %>%
   mutate(FID = as.character(X1), IID = as.character(X2), Pheno_BP = if_else(X3 %in% c(1, 2), X3 - 1, NA_real_)) %>%
   select(FID, IID, Pheno_BP)
 
@@ -107,7 +106,7 @@ pheno_all <- pheno_global %>%
   full_join(pheno_sz, by = c("FID", "IID")) %>%
   full_join(pheno_bp, by = c("FID", "IID"))
 
-covar_sexe <- as.data.table(read_excel("data/attributs_sujets.xlsx")) %>%
+covar_sexe <- as.data.table(read_excel("« /lustre09/project/6000443/expression_genes/attributs_sujets.xlsx")) %>%
   mutate(IID = as.character(subid), Sexe = as.factor(sexe.x)) %>%
   select(IID, Sexe)
 pheno_all <- pheno_all %>% left_join(covar_sexe, by = "IID")

@@ -21,8 +21,8 @@ library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 # Chargement des données
 # -----------------------
 
-lifted <- fread("results/HumanHT12v4_hg38_annotations.csv")
-sondes_exprimees <- fread("results/liste_sondes_exprimees.txt", header = FALSE, col.names = "probe_id")$probe_id
+lifted <- fread("/lustre09/project/6000443/expression_genes/resultats/HumanHT12v4_hg38_annotations.csv")
+sondes_exprimees <- fread("/lustre09/project/6000443/expression_genes/resultats/liste_sondes_exprimees.txt", header = FALSE, col.names = "probe_id")$probe_id
 
 lifted <- lifted[probe_id %in% sondes_exprimees]
 lifted <- lifted[!is.na(symbol) & symbol != "" & symbol != "---"]
@@ -67,7 +67,7 @@ probe_gene <- merge(
   gene_coords[, .(hgnc_symbol, chr, start_position, end_position)], 
   by.x = "symbol", by.y = "hgnc_symbol", all.x = FALSE)
 
-fwrite(probe_gene, "results/region_cis/probe_gene_map.txt", sep = "\t", quote = FALSE)
+fwrite(probe_gene, "/lustre09/project/6000443/expression_genes/resultats/probe_gene_map.txt", sep = "\t", quote = FALSE)
 
 
 # --------------------------------------
@@ -102,5 +102,5 @@ creer_bed <- function(dt, fenetre_kb) {
 bed_10kb <- creer_bed(probe_gene, fenetre_kb = 10)
 bed_50kb <- creer_bed(probe_gene, fenetre_kb = 50)
 
-fwrite(bed_10kb, "results/region_cis/regions_cis_10kb.bed", sep = "\t", col.names = FALSE, quote = FALSE)
-fwrite(bed_50kb, "results/region_cis/regions_cis_50kb.bed", sep = "\t", col.names = FALSE, quote = FALSE)
+fwrite(bed_10kb, "/lustre09/project/6000443/expression_genes/resultats/regions_cis_10kb.bed", sep = "\t", col.names = FALSE, quote = FALSE)
+fwrite(bed_50kb, "/lustre09/project/6000443/expression_genes/resultats/regions_cis_50kb.bed", sep = "\t", col.names = FALSE, quote = FALSE)

@@ -17,7 +17,7 @@ library(rtracklayer)
 # ----------------------------------------------
 
 # --Lecture du fichier
-annotation <- read.delim("data/Illumina HumanHT-12 V4.0 expression beadchip/HumanHT-12_V4_0_R2_15002873_B.txt", skip = 8, stringsAsFactors = FALSE)
+annotation <- read.delim("/lustre09/project/6000443/expression_genes/resultats/HumanHT-12_V4_0_R2_15002873_B.txt", skip = 8, stringsAsFactors = FALSE)
 
 # Récupérer uniquement les sondes humaines (1-22, X, Y)
 annotation <- annotation[annotation$Species == "Homo sapiens", ]
@@ -95,7 +95,7 @@ gr_hg19 <- GRanges(seqnames = all_ranges$chr, ranges = IRanges(start = all_range
 
 # --Fichier à télécharger depuis :
 # https://hgdownload.soe.ucsc.edu/goldenPath/hg19/liftOver/hg19ToHg38.over.chain.gz
-chain <- import.chain("data/Illumina HumanHT-12 V4.0 expression beadchip/hg19ToHg38.over.chain")
+chain <- import.chain("/lustre09/project/6000443/expression_genes/resultats/retrait_effet_eqtl/Illumina HumanHT-12 V4.0 expression beadchip/hg19ToHg38.over.chain")
 
 gr_hg38_list <- liftOver(gr_hg19, chain)
 # --Garder uniquement les sondes avec une correspondance unique en hg38

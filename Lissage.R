@@ -5,8 +5,8 @@
 library(mgcv)
 library(dplyr)
 
-dir_scores <- "results/scores_iogc"
-dir_sortie <- "results/asso_pheno"
+dir_scores <- "/lustre09/project/6000443/expression_genes/resultats/scores_iogc"
+dir_sortie <- "/lustre09/project/6000443/expression_genes/resultats/association_pheno"
 
 phenotypes <- c("Pheno_Global", "Pheno_SZ", "Pheno_BP")
 
@@ -18,7 +18,7 @@ fonction_gam_lissage <- function(data, pheno, score_col, titre) {
   model_data <- data[!is.na(data[[pheno]]) & !is.na(data[[score_col]]), ]
 
   form_gam <- as.formula(paste0(pheno, " ~ s(", score_col, ", k = 10)"))
-  m <- gam(form_gam, data = model_data, family = binomial(link = "logit"), method = "ML")
+  m <- gam(form_gam, data = model_data, family = binomial(link = "logit"), method = "GCV.Cp")
 
   s <- summary(m)
   pv <- s$s.table[1, "p-value"]
@@ -45,9 +45,9 @@ lire_pheno <- function(fichier, nom_col) {
   out
 }
 
-pheno_global <- lire_pheno("data/GCbroad_plink.txt", "Pheno_Global")
-pheno_sz <- lire_pheno("data/SZbroad_plink.txt", "Pheno_SZ")
-pheno_bp <- lire_pheno("data/BPbroad_plink.txt", "Pheno_BP")
+pheno_global <- lire_pheno("/lustre09/project/6033529/schizo/data/WGS_bs_2022/500_samples_cag/RetroFunRVS/objets_ped/GCbroad_plink.txt", "Pheno_Global")
+pheno_sz <- lire_pheno("/lustre09/project/6033529/schizo/data_AB/WGS_bs_2022/freq_RV/SZbroad_plink.txt", "Pheno_SZ")
+pheno_bp <- lire_pheno("/lustre09/project/6033529/schizo/data_AB/WGS_bs_2022/freq_RV/BPbroad_plink.txt", "Pheno_BP")
 
 pheno_dt <- Reduce(function(x, y) merge(x, y, by = c("FID", "IID"), all = TRUE),
                     list(pheno_global, pheno_sz, pheno_bp))

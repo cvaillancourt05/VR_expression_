@@ -17,20 +17,20 @@ library(data.table)
 # -----------
 
 fenetres <- c("10kb", "50kb")
-data_dir <- "/home/chloev/links/projects/def-bureau/chloev/liste_variants/resultats"
-out_dir <- "/home/chloev/links/projects/def-bureau/chloev/scores"
+data_dir <- "/lustre09/project/6000443/expression_genes/resultats/variants_rares_associes_aux_outliers"
+out_dir <- "/lustre09/project/6000443/expression_genes/resultats/scores_iogc"
 
 # --Versions des scores Z à traiter
 versions_z <- c("avec_eQTL_atteints", "avec_eQTL_non_atteints", "sans_eQTL_atteints", "sans_eQTL_non_atteints")
 
 # --Fichier de phénotype (pour distinguer atteints/non-atteints)
-fichier_pheno_global <- "/home/chloev/links/projects/def-bureau/chloev/GCbroad_plink.txt"
+fichier_pheno_global <- "/lustre09/project/6033529/schizo/data/WGS_bs_2022/500_samples_cag/RetroFunRVS/objets_ped/GCbroad_plink.txt"
 
 # ----------------------
 # Chargement des données
 # ----------------------
 
-entete <- colnames(fread("/home/chloev/links/projects/def-bureau/chloev/phenotypes.txt", nrows = 0)) # --Pour avoir FID et IID
+entete <- colnames(fread("/lustre09/project/6000443/expression_genes/resultats/retrait_effet_eqtl/phenotypes.txt", nrows = 0)) # --Pour avoir FID et IID
 df_cohorte <- data.table(FID_IID = entete[-1])
 df_cohorte[, c("FID", "IID") := tstrsplit(FID_IID, "_", fixed = TRUE)]
 df_cohorte[, FID_IID := NULL]
@@ -82,7 +82,6 @@ calculer_score_iogc <- function(fenetre, version_z, cohorte) {
   return(score_final)
 
 }
-
 
 # -----------------------------------
 # Boucle pour toutes les combinaisons

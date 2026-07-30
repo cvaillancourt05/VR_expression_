@@ -16,8 +16,8 @@ library(tidyr)
 library(geepack)
 library(purrr)
 
-dir_scores <- "results/scores_iogc"
-dir_sortie <- "results/asso_pheno"
+dir_scores <- "/lustre09/project/6000443/expression_genes/resultats/scores_iog"
+dir_sortie <- "/lustre09/project/6000443/expression_genes/resultats/association_pheno"
 
 # -------------------------------------------------
 # Dichotomisation du score au 90e percentile (P90)
@@ -91,15 +91,15 @@ fonction_gee <- function(data, pheno, score_col) {
 # Chargement et standardisation des fichiers phénotypes
 # ------------------------------------------------------
 
-pheno_global <- read_table("data/GCbroad_plink.txt", show_col_types = FALSE, col_names = FALSE) %>%
+pheno_global <- read_table("/lustre09/project/6033529/schizo/data/WGS_bs_2022/500_samples_cag/RetroFunRVS/objets_ped/GCbroad_plink.txt", show_col_types = FALSE, col_names = FALSE) %>%
   mutate(FID = as.character(X1), IID = as.character(X2), Pheno_Global = if_else(X3 %in% c(1, 2), X3 - 1, NA_real_)) %>%
   select(FID, IID, Pheno_Global)
 
-pheno_sz <- read_table("data/SZbroad_plink.txt", show_col_types = FALSE, col_names = FALSE) %>%
+pheno_sz <- read_table("/lustre09/project/6033529/schizo/data_AB/WGS_bs_2022/freq_RV/SZbroad_plink.txt", show_col_types = FALSE, col_names = FALSE) %>%
   mutate(FID = as.character(X1), IID = as.character(X2), Pheno_SZ = if_else(X3 %in% c(1, 2), X3 - 1, NA_real_)) %>%
   select(FID, IID, Pheno_SZ)
 
-pheno_bp <- read_table("data/BPbroad_plink.txt", show_col_types = FALSE, col_names = FALSE) %>%
+pheno_bp <- read_table("/lustre09/project/6033529/schizo/data_AB/WGS_bs_2022/freq_RV/BPbroad_plink.txt", show_col_types = FALSE, col_names = FALSE) %>%
   mutate(FID = as.character(X1), IID = as.character(X2), Pheno_BP = if_else(X3 %in% c(1, 2), X3 - 1, NA_real_)) %>%
   select(FID, IID, Pheno_BP)
 

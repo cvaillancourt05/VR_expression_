@@ -31,9 +31,9 @@ seq_dir="/lustre09/project/6033529/schizo/data/WGS_bs_2022/500_samples_cag_witho
 vcf_prefix="impute5_gigi2_combined_seq_RV"
 frq_prefix="impute5_gigi2_combined_seq_RV_FINAL"
 frq_dir="/lustre09/project/6033529/schizo/data/WGS_bs_2022/freq_RV/"
-out_dir="/home/chloev/links/projects/def-bureau/chloev/liste_variants/sorties"
-misc_dir="/home/chloev/links/projects/def-bureau/chloev/liste_variants"
-merge_dir="${out_dir}/merge"
+out_dir="/lustre09/project/6000443/expression_genes/resultats/variants_rares_associes_aux_outliers"
+misc_dir="/lustre09/project/6000443/expression_genes/resultats/variants_rares_associes_aux_outliers"
+merge_dir="${out_dir}"
 
 # --------------------------
 # Traitement par chromosome

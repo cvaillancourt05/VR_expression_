@@ -21,7 +21,7 @@ source("liftOver.R")
 # Fusion de l'expression et les coordonnées en hg38 
 # --------------------------------------------------
 
-expr_data <- read.delim("data/Adjusted_expression_values.txt", sep = "\t", check.names = FALSE)
+expr_data <- read.delim("/lustre09/project/6000443/expression_genes/Adjusted_expression_values.txt", sep = "\t", check.names = FALSE)
 colnames(expr_data)[1] <- "probe_id" # --Harmonisation du nom de la première colonnne
 
 expr_hg38 <- merge(lifted, expr_data, by = "probe_id")
@@ -30,7 +30,7 @@ expr_hg38 <- merge(lifted, expr_data, by = "probe_id")
 # Chargement du phénotype et harmonisation des identifiants  
 # ----------------------------------------------------------
 
-pheno <- read.table("data/GCbroad_plink.txt", header = FALSE, stringsAsFactors = FALSE)
+pheno <- read.table("/lustre09/project/6033529/schizo/data/WGS_bs_2022/500_samples_cag/RetroFunRVS/objets_ped/GCbroad_plink.txt", header = FALSE, stringsAsFactors = FALSE)
 colnames(pheno) <- c("FID", "IID", "Diagnostic")
 pheno$IID <- as.character(pheno$IID)
 pheno$FID <- as.character(pheno$FID)
@@ -101,12 +101,12 @@ pheno_tensorqtl <- cbind(`#id` = rownames(pheno_t), pheno_t)
 # ----------------------------------
 
 # --Fichier de phénotypes
-write.table(pheno_tensorqtl, "results/phenotypes.txt", sep = "\t", 
+write.table(pheno_tensorqtl, "/lustre09/project/6000443/expression_genes/resultats/retrait_effet_eqtl/phenotypes.txt", sep = "\t", 
                         row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 # --Fichier BED brut intermédiaire
-write.table(tensorqtl_bed, "results/expression_hg38.bed", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+write.table(tensorqtl_bed, "/lustre09/project/6000443/expression_genes/resultats/retrait_effet_eqtl/expression_hg38.bed", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 # --Compression en BGZF + indexation Tabix
-out <- bgzip("results/expression_hg38.bed", dest = "results/expression_hg38.bed.gz", overwrite = TRUE)
+out <- bgzip("/lustre09/project/6000443/expression_genes/resultats/retrait_effet_eqtl/expression_hg38.bed", dest = " /lustre09/project/6000443/expression_genes/resultats/retrait_effet_eqtl/expression_hg38.bed.gz", overwrite = TRUE)
 indexTabix(out, format = "bed")
