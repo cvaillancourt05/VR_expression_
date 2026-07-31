@@ -70,7 +70,7 @@ for (fenetre in fenetres) {
     porteurs <- rbindlist(lapply(tsv_files, function(f) {
       if (file.size(f) == 0) return(NULL)
       dt <- fread(f, header = FALSE, sep = "\t", col.names = c("IID", "variant_id", "geno"))
-      dt[, IID := sub("^[0-9]+_", "", as.character(IID))]
+      dt[, IID := sub("^[^_]+_", "", as.character(IID))]
       dt[, variant_id := as.character(variant_id)]
       
       # --Filtrage rapide
@@ -86,7 +86,7 @@ for (fenetre in fenetres) {
     # Filtrage afin d'obtenir les variants des individus sans expression
     # -------------------------------------------------------------------
     resultat <- merge(candidats, porteurs, by = "variant_id", allow.cartesian = TRUE)
-    resultat <- resultat[FID == FID_outlier & IID != IID_outlier]
+    resultat <- resultat[IID != IID_outlier]
     resultat <- resultat[!(IID %chin% iids_avec_expr)]
 
     if (nrow(resultat) == 0) next
