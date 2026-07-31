@@ -58,9 +58,6 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   geno_porteurs[, IID := sub(".*_", "", IID)]
   geno_porteurs[, IID := as.character(IID)]
   geno_porteurs[, variant_id := as.character(variant_id)]
-  
-  # --Exclusion de l'individu aberrant
-  geno_porteurs <- geno_porteurs[IID != "541"]
 
   # --On garde que les porteurs de variants dans une région cis
   ids_valides <- regions_dt[["variant_id"]]
@@ -121,6 +118,10 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   rm(work_initial, z_long, z_sub)
   gc()
 
+  # Compte des variants avant exclusion 
+  stats_avant <- work[!is.na(is_outlier), .(n_variants_avant_exclusion = uniqueN(variant_id),
+                                             n_paires_avant_exclusion = uniqueN(paste(variant_id, probe_id)))]
+
   # ------------------------------------------------
   # Critère de présence exclusive chez les outliers
   # ------------------------------------------------
@@ -144,9 +145,14 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   critere_dir_tout <- merge(critere_pres, dir_coherente, by = c("variant_id", "probe_id"))
   critere_dir <- critere_dir_tout[dir_sonde %in% c("UP", "DOWN")] # --On exclut MIXED
 
+  # -- Extraction des variants exclus (MIXED) avec leurs IID et Phénotype
+  pheno_statut <- fifelse(grepl("non_atteints", version_z), "Non-atteint", "Atteint")
+  paires_mixed <- critere_dir_tout[dir_sonde == "MIXED", .(variant_id, probe_id, symbol)]
+  exclus_mixed_complet <- work[is_outlier == TRUE][paires_mixed, on = .(variant_id, probe_id), nomatch = NULL]
+
   # --Variants exclus : direction de déviation non cohérente
-  exclusions[["direction_mixed"]] <- critere_dir_tout[dir_sonde == "MIXED", .(variant_id, probe_id, symbol)]
-  rm(critere_pres, dir_coherente, critere_dir_tout)
+  exclusions[["direction_mixed"]] <- exclus_mixed_complet[, .(variant_id, probe_id, symbol, IID, Statut_Pheno = pheno_statut)]
+  rm(critere_pres, dir_coherente, critere_dir_tout, paires_mixed, exclus_mixed_complet)
 
   # ------------------------------------------------------------
   # Collecte des ID et scores Z des individus outliers porteurs 
@@ -193,22 +199,29 @@ filtrer_variants <- function(fenetre, version_z, zscore_file) {
   # ------------------------------------------
   exclusions_liste <- rbindlist(mapply(function(dt, critere) {
     if (nrow(dt) == 0) return(NULL)
-    dt <- unique(dt[, .(variant_id, probe_id, symbol)])
+    
+    cols_presentes <- colnames(dt)
+    cols_a_garder <- c("variant_id", "probe_id", "symbol")
+    
+    if ("IID" %in% cols_presentes) cols_a_garder <- c(cols_a_garder, "IID")
+    if ("Statut_Pheno" %in% cols_presentes) cols_a_garder <- c(cols_a_garder, "Statut_Pheno")
+    
+    dt <- unique(dt[, ..cols_a_garder])
     dt[, critere := critere]
-    dt
-  }, exclusions, names(exclusions), SIMPLIFY = FALSE))
+    
+    if (!"IID" %in% colnames(dt)) dt[, IID := NA_character_]
+    if (!"Statut_Pheno" %in% colnames(dt)) dt[, Statut_Pheno := NA_character_]
+    
+    return(dt)
+  }, exclusions, names(exclusions), SIMPLIFY = FALSE), use.names = TRUE)
 
-  exclusions_stats <- exclusions_liste[, .(n_paires_exclues = .N, 
-                                            n_variants_exclus = uniqueN(variant_id)), by = critere]
+  exclusions_stats <- exclusions_liste[, .(n_paires_exclues = .N, n_variants_exclus = uniqueN(variant_id)), by = critere]
 
-  return(list(candidats = candidats[, .(variant_id, probe_id, symbol, direction_expression, 
-                        n_outliers_porteurs = n_outliers, 
-                        individu_outlier = IID, 
-                        Z_outlier = Z, 
-                        MAF_Atteints, MAF_Non_atteints)],
-              exclusions_liste = exclusions_liste,
-              exclusions_stats = exclusions_stats))
-
+  return(list(
+    candidats = candidats[, .(variant_id, probe_id, symbol, direction_expression, n_outliers_porteurs = n_outliers, individu_outlier = IID, Z_outlier = Z, MAF_Atteints, MAF_Non_atteints)],
+    exclusions_liste = exclusions_liste[, .(variant_id, probe_id, symbol, IID, Statut_Pheno, critere)],
+    exclusions_stats = exclusions_stats
+  ))
 }
 
 # -----------------------------------
@@ -227,8 +240,7 @@ for (fenetre in fenetres) {
 
     # --Fichier des variants exclus
     fwrite(resultat$exclusions_stats, exclus_file, sep = "\t", quote = FALSE)
-    cat("\n", file = exclus_file, append = TRUE)
-    fwrite(resultat$exclusions_liste, exclus_file, sep = "\t", quote = FALSE, append = TRUE)
+    fwrite(resultat$exclusions_liste, exclus_file, sep = "\t", quote = FALSE)
 
     rm(resultat)
     gc()
