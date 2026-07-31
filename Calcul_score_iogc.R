@@ -54,20 +54,6 @@ calculer_score_iogc <- function(fenetre, version_z, cohorte) {
   setnames(candidats, "individu_outlier", "IID")
   candidats[, IID := as.character(IID)]
 
-  # --Ajout des données non-atteints (ref. n-atteints) pour les atteints (ref. atteints)
-  est_ref_atteints <- grepl("atteints$", version_z) & !grepl("non_atteints", version_z)
-  if(est_ref_atteints) {
-    version_z_non_atteints <- sub("_atteints$", "_non_atteints", version_z)
-    input_file_non_atteints <- file.path(data_dir, sprintf("variants_candidats_%s_%s.txt", fenetre, version_z_non_atteints))
-
-    candidats_non_atteints <- fread(input_file_non_atteints, select = c("variant_id", "probe_id", "symbol", "individu_outlier"))
-    setnames(candidats_non_atteints, "individu_outlier", "IID")
-    candidats_non_atteints[, IID := as.character(IID)]
-    candidats_non_atteints <- candidats_non_atteints[IID %in% iid_non_atteints]
-
-    candidats <- rbind(candidats, candidats_non_atteints)
-  }
-
   # --Déduplication
   candidats_unique <- unique(candidats, by = c("IID", "symbol"))
 
