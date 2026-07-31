@@ -104,10 +104,11 @@ outliers_par_ind_avec <- colSums(abs(z_initial_avec_ref_na) >= 2, na.rm = TRUE)
 seuil_avec <- quantile(outliers_par_ind_avec, 0.75) + 1.5 * IQR(outliers_par_ind_avec)
 
 ids_gardes_avec <- names(outliers_par_ind_avec[outliers_par_ind_avec <= seuil_avec])
+ids_gardes_avec <- setdiff(ids_gardes_avec, "541")
 ids_atteints_avec_clean <- intersect(ids_atteints_avec, ids_gardes_avec)
 ids_non_atteints_avec_clean <- intersect(ids_non_atteints_avec, ids_gardes_avec)
 
-ids_outliers_globaux_avec <- names(outliers_par_ind_avec[outliers_par_ind_avec > seuil_avec])
+ids_outliers_globaux_avec <- c(names(outliers_par_ind_avec[outliers_par_ind_avec > seuil_avec]), "541")
 write.table(ids_outliers_globaux_avec, "/lustre09/project/6000443/expression_genes/resultats/Zscores/outliers_globaux_avec.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
 
 # Sans eQTL
@@ -115,10 +116,11 @@ outliers_par_ind_sans <- colSums(abs(z_initial_sans_ref_na) >= 2, na.rm = TRUE)
 seuil_sans <- quantile(outliers_par_ind_sans, 0.75) + 1.5 * IQR(outliers_par_ind_sans)
 
 ids_gardes_sans <- names(outliers_par_ind_sans[outliers_par_ind_sans <= seuil_sans])
+ids_gardes_sans <- setdiff(ids_gardes_sans, "541")
 ids_atteints_sans_clean <- intersect(ids_atteints_sans, ids_gardes_sans)
 ids_non_atteints_sans_clean <- intersect(ids_non_atteints_sans, ids_gardes_sans)
 
-ids_outliers_globaux_sans <- names(outliers_par_ind_sans[outliers_par_ind_sans > seuil_sans])
+ids_outliers_globaux_sans <- c(names(outliers_par_ind_sans[outliers_par_ind_sans > seuil_sans]), "541")
 write.table(ids_outliers_globaux_sans, "/lustre09/project/6000443/expression_genes/resultats/Zscores/outliers_globaux_sans.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
 
 # ----------------------------------------------------
@@ -131,8 +133,11 @@ z_final_avec_ref_na <- calculer_scores_z(mat_expr_avec, ids_reference = ids_non_
 write.table(data.frame(probe_id = rownames(z_final_avec_ref_na), z_final_avec_ref_na, check.names = FALSE), "/lustre09/project/6000443/expression_genes/resultats/Zscores/Z_avec_eQTL_ref_non_atteints.txt", sep = "\t", row.names = FALSE, quote = FALSE)
 
 # Référence : atteints nettoyés -> appliqué aux atteints uniquement
+# Ajout des non-atteints au sous-groupe
 z_final_avec_ref_a <- calculer_scores_z(mat_expr_avec, ids_reference = ids_atteints_avec_clean, ids_cible = ids_atteints_avec_clean)
+z_final_avec_ref_a <- cbind(z_final_avec_ref_a, z_final_avec_ref_na[, ids_non_atteints_avec_clean, drop = FALSE])
 write.table(data.frame(probe_id = rownames(z_final_avec_ref_a), z_final_avec_ref_a, check.names = FALSE), "/lustre09/project/6000443/expression_genes/resultats/Zscores/Z_avec_eQTL_ref_atteints.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+
 
 
 # SANS eQTL
@@ -141,5 +146,7 @@ z_final_sans_ref_na <- calculer_scores_z(mat_expr_sans, ids_reference = ids_non_
 write.table(data.frame(probe_id = rownames(z_final_sans_ref_na), z_final_sans_ref_na, check.names = FALSE), "/lustre09/project/6000443/expression_genes/resultats/Zscores/Z_sans_eQTL_ref_non_atteints.txt", sep = "\t", row.names = FALSE, quote = FALSE)
 
 # Référence : atteints nettoyés -> appliqué aux atteints uniquement
+# Ajout des non-atteints au sous-groupe
 z_final_sans_ref_a <- calculer_scores_z(mat_expr_sans, ids_reference = ids_atteints_sans_clean, ids_cible = ids_atteints_sans_clean)
+z_final_sans_ref_a <- cbind(z_final_sans_ref_a, z_final_sans_ref_na[, ids_non_atteints_sans_clean, drop = FALSE])
 write.table(data.frame(probe_id = rownames(z_final_sans_ref_a), z_final_sans_ref_a, check.names = FALSE), "/lustre09/project/6000443/expression_genes/resultats/Zscores/Z_sans_eQTL_ref_atteints.txt", sep = "\t", row.names = FALSE, quote = FALSE)
