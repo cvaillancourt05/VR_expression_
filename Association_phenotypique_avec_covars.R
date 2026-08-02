@@ -17,7 +17,7 @@ library(geepack)
 library(readxl)
 library(data.table)
 
-dir_scores <- "/lustre09/project/6000443/expression_genes/resultats/scores_iog"
+dir_scores <- "/lustre09/project/6000443/expression_genes/resultats/scores_iogc"
 dir_sortie <- "/lustre09/project/6000443/expression_genes/resultats/association_pheno"
 
 # --------------------------------------------------------------------
