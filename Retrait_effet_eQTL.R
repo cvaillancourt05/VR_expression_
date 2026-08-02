@@ -16,7 +16,7 @@ library(data.table)
 # Chargement des données
 # -----------------------
 
-eqtl_results <- fread("/lustre09/project/6000443/expression_genes/resultats/tensorqtl/tensorqtl_out.cis_qtl.txt") 
+eqtl_results <- fread("/lustre09/project/6000443/expression_genes/resultats/retrait_effet_eqtl/tensorqtl_out.cis_qtl.txt") 
 expression_mat <- fread("/lustre09/project/6000443/expression_genes/Adjusted_expression_values.txt")
 raw_geno <- fread("/lustre09/project/6000443/expression_genes/resultats/retrait_effet_eqtl/genotypes_eqtl.raw")
 
